@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # --- BANCO DE DADOS (PostgreSQL) ---
+  postgres:
+    # Pinned to a specific major version on purpose: the floating `:alpine`
+    # tag now resolves to Postgres 18+, which changed its on-disk data
+    # layout (pg_ctlcluster-style) and refuses to start against a volume
+    # created by an older major version. Pinning avoids that class of
+    # breakage entirely and keeps the image reproducible across machines.
+    image: postgres:16-alpine
+    container_name: lms_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lms_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lms_password}
+      POSTGRES_DB: ${POSTGRES_DB:-lms_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lms_user} -d ${POSTGRES_DB:-lms_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # --- GERENCIADOR DO BANCO (Adminer) ---
+  adminer:
+    image: adminer
+    container_name: lms_adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+
+  # --- BACKEND (Node.js + Express + Prisma) ---
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: lms_backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-lms_user}:${POSTGRES_PASSWORD:-lms_password}@postgres:5432/${POSTGRES_DB:-lms_db}?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev_only_access_secret_please_change_in_prod_32c}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_only_refresh_secret_please_change_in_prod_32}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+      # Used to build absolute return/webhook URLs handed to payment
+      # gateways. PUBLIC_API_URL in particular must be reachable from the
+      # public internet for webhooks to arrive — localhost only works once
+      # you're testing through a tunnel (e.g. ngrok) or a real deployment.
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:5000}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:3000}
+      PAYSUITE_BASE_URL: ${PAYSUITE_BASE_URL:-https://paysuite.tech/api/v1}
+      PAYSUITE_API_KEY: ${PAYSUITE_API_KEY:-}
+      PAYSUITE_WEBHOOK_SECRET: ${PAYSUITE_WEBHOOK_SECRET:-}
+      PAYPAL_BASE_URL: ${PAYPAL_BASE_URL:-https://api-m.sandbox.paypal.com}
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
+      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:-}
+      PAYPAL_WEBHOOK_ID: ${PAYPAL_WEBHOOK_ID:-}
+      PAYPAL_CURRENCY: ${PAYPAL_CURRENCY:-USD}
+      PAYPAL_MZN_PER_USD_RATE: ${PAYPAL_MZN_PER_USD_RATE:-64}
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # --- FRONTEND (Next.js App Router) ---
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: lms_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

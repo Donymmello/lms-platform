@@ -1,0 +1,193 @@
+// LMS Platform — Prisma schema
+// Auth + Users modules are defined here. Other modules (courses, payments,
+// progress, analytics) will extend this file as they are implemented.
+
+generator client {
+  provider = "prisma-client-js"
+  // `node:20-alpine` ships OpenSSL 3.x, not the 1.1.x Prisma defaults to
+  // when it can't detect the version on a minimal image. Pinning the musl
+  // + OpenSSL 3.0 engine here (alongside "native" for local, non-Alpine
+  // dev) avoids the "Error loading shared library libssl.so.1.1" crash.
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  INSTRUCTOR
+  STUDENT
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String // bcrypt hash — never the plaintext password
+  role      Role     @default(STUDENT)
+  /// Deactivated accounts are blocked at login/refresh (see auth.service.ts)
+  /// rather than deleted, preserving their history (enrollments, purchases).
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  refreshTokens RefreshToken[]
+  coursesTaught Course[]
+  enrollments   Enrollment[]
+  payments      Payment[]
+
+  @@map("users")
+}
+
+/// One row per issued refresh token (hashed, never the raw value), so that
+/// individual sessions/devices can be revoked and rotation reuse can be
+/// detected without invalidating every session for the user.
+model RefreshToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model Course {
+  id          String       @id @default(uuid())
+  title       String
+  /// URL-safe identifier, derived from title at creation time and kept
+  /// unique (see courses.service.ts) — used for public course URLs later.
+  slug        String       @unique
+  description String       @default("")
+  thumbnailUrl String?
+  priceCents  Int          @default(0)
+  status      CourseStatus @default(DRAFT)
+
+  instructorId String
+  instructor   User   @relation(fields: [instructorId], references: [id], onDelete: Restrict)
+
+  modules     CourseModule[]
+  enrollments Enrollment[]
+  payments    Payment[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([instructorId])
+  @@map("courses")
+}
+
+/// A named, ordered section within a course (e.g. "Módulo 1: Introdução")
+/// that groups lessons. Deliberately named CourseModule (not "Module") to
+/// avoid clashing with the Node.js/backend-architecture sense of "module".
+model CourseModule {
+  id       String @id @default(uuid())
+  title    String
+  order    Int
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  lessons   Lesson[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([courseId])
+  @@map("course_modules")
+}
+
+model Lesson {
+  id          String  @id @default(uuid())
+  title       String
+  description String  @default("")
+  order       Int
+  /// Free preview lessons are playable without an enrollment/purchase.
+  isFreePreview Boolean @default(false)
+
+  /// Populated once the video module wires up Bunny Stream (signed URLs
+  /// are generated on demand from this id — never a direct/public video URL).
+  bunnyVideoId    String?
+  durationSeconds Int?
+
+  moduleId String
+  module   CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([moduleId])
+  @@map("lessons")
+}
+
+/// A user's enrollment in a course. Free courses (priceCents = 0) create
+/// this immediately on self-enrollment; priced courses only get one once
+/// the linked Payment reaches COMPLETED (see payments.service.ts). One row
+/// per (user, course) pair — enrolling twice is rejected as a conflict
+/// rather than creating duplicate rows.
+model Enrollment {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  /// The payment that unlocked this enrollment, if any (null for free courses).
+  paymentId String?  @unique
+  payment   Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+  @@map("enrollments")
+}
+
+enum PaymentProvider {
+  MPESA
+  EMOLA
+  PAYPAL
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+/// One row per checkout attempt. `reference` is OUR idempotency key —
+/// generated before calling out to the gateway and never reused — so a
+/// retried checkout or a duplicated webhook delivery can never double-charge
+/// or double-enroll (see payments.service.ts). `providerTxnId` is the
+/// gateway's own id (PaySuite payment ULID / PayPal order id), used to
+/// correlate webhook callbacks back to this row. `rawPayload` keeps the last
+/// webhook body for audits — it is never trusted over the verified fields.
+model Payment {
+  id            String          @id @default(uuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  courseId      String
+  course        Course          @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  provider      PaymentProvider
+  status        PaymentStatus   @default(PENDING)
+  amountCents   Int
+  currency      String          @default("MZN")
+  reference     String          @unique
+  providerTxnId String?
+  rawPayload    Json?
+  enrollment    Enrollment?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([courseId])
+  @@index([providerTxnId])
+  @@map("payments")
+}
