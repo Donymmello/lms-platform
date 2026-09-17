@@ -3,6 +3,7 @@ import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate";
 import { checkRole } from "../../middlewares/checkRole";
 import { validate } from "../../middlewares/validate";
+import { videoUpload } from "../../middlewares/videoUpload";
 import { coursesController } from "./courses.controller";
 import {
   courseIdParamSchema,
@@ -73,4 +74,16 @@ coursesRouter.delete(
   "/:courseId/modules/:moduleId/lessons/:lessonId",
   validate(lessonIdParamSchema, "params"),
   coursesController.removeLesson
+);
+
+coursesRouter.post(
+  "/:courseId/modules/:moduleId/lessons/:lessonId/video",
+  validate(lessonIdParamSchema, "params"),
+  videoUpload.single("video"),
+  coursesController.uploadLessonVideo
+);
+coursesRouter.delete(
+  "/:courseId/modules/:moduleId/lessons/:lessonId/video",
+  validate(lessonIdParamSchema, "params"),
+  coursesController.removeLessonVideo
 );

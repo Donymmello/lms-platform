@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { ValidationError } from "../../errors";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { coursesService } from "./courses.service";
 import { courseModulesService } from "./course-modules.service";
@@ -84,6 +85,30 @@ export const coursesController = {
 
   removeLesson: asyncHandler(async (req: Request<LessonIdParam>, res: Response) => {
     const course = await lessonsService.remove(
+      req.params.courseId,
+      req.params.moduleId,
+      req.params.lessonId,
+      req.user!
+    );
+    res.status(200).json({ status: "success", data: { course } });
+  }),
+
+  uploadLessonVideo: asyncHandler(async (req: Request<LessonIdParam>, res: Response) => {
+    if (!req.file) {
+      throw new ValidationError("No video file was uploaded (expected a 'video' form field)");
+    }
+    const course = await lessonsService.uploadVideo(
+      req.params.courseId,
+      req.params.moduleId,
+      req.params.lessonId,
+      req.file.path,
+      req.user!
+    );
+    res.status(200).json({ status: "success", data: { course } });
+  }),
+
+  removeLessonVideo: asyncHandler(async (req: Request<LessonIdParam>, res: Response) => {
+    const course = await lessonsService.removeVideo(
       req.params.courseId,
       req.params.moduleId,
       req.params.lessonId,

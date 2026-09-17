@@ -70,6 +70,11 @@ services:
       PAYPAL_WEBHOOK_ID: ${PAYPAL_WEBHOOK_ID:-}
       PAYPAL_CURRENCY: ${PAYPAL_CURRENCY:-USD}
       PAYPAL_MZN_PER_USD_RATE: ${PAYPAL_MZN_PER_USD_RATE:-64}
+      BUNNY_STREAM_BASE_URL: ${BUNNY_STREAM_BASE_URL:-https://video.bunnycdn.com}
+      BUNNY_STREAM_LIBRARY_ID: ${BUNNY_STREAM_LIBRARY_ID:-}
+      BUNNY_STREAM_API_KEY: ${BUNNY_STREAM_API_KEY:-}
+      BUNNY_STREAM_TOKEN_AUTH_KEY: ${BUNNY_STREAM_TOKEN_AUTH_KEY:-}
+      BUNNY_STREAM_TOKEN_TTL_SECONDS: ${BUNNY_STREAM_TOKEN_TTL_SECONDS:-3600}
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -90,6 +95,11 @@ services:
     environment:
       NODE_ENV: development
       NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
+      # Used only for server-side fetches (Server Components,
+      # generateMetadata). Inside Docker, `localhost` from the frontend
+      # container is the frontend container itself — the backend is only
+      # reachable at its service name on the compose network.
+      INTERNAL_API_URL: http://backend:5000/api/v1
     volumes:
       - ./frontend:/app
       - /app/node_modules

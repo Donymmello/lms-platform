@@ -33,22 +33,20 @@ function toQueryString(query: ApiFetchOptions["query"]): string {
 }
 
 /**
- * Thin fetch wrapper for the backend API.
- * `credentials: "include"` is what makes the HTTP-only auth cookies travel
- * with every request — the access/refresh tokens are never read or stored
- * in JS, so there is nothing here for XSS to steal.
+ * The browser always uses NEXT_PUBLIC_API_URL (the only thing it can
+ * resolve). Code running server-side — Server Components, generateMetadata,
+ * route handlers — prefers INTERNAL_API_URL when set, since in Docker the
+ * two containers can't reach each other via `localhost` (see config/env.ts).
  */
-export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const response = await fetch(`${env.NEXT_PUBLIC_API_URL}${path}${toQueryString(options.query)}`, {
-    method: options.method ?? "GET",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: options.body ? JSON.stringify(options.body) : undefined,
-    cache: "no-store",
-  });
+function resolveBaseUrl(): string {
+  if (typeof window === "undefined" && env.INTERNAL_API_URL) {
+    return env.INTERNAL_API_URL;
+  }
+  return env.NEXT_PUBLIC_API_URL;
+}
 
+/** Shared response handling for both `apiFetch` and `apiUpload` — parses JSON when present and throws `ApiError` for any non-2xx status. */
+async function handleResponse<T>(response: Response): Promise<T> {
   const isJson = response.headers.get("content-type")?.includes("application/json");
   const payload = isJson ? await response.json() : null;
 
@@ -62,4 +60,46 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   }
 
   return payload as T;
+}
+
+/**
+ * Thin fetch wrapper for the backend API.
+ * `credentials: "include"` is what makes the HTTP-only auth cookies travel
+ * with every request — the access/refresh tokens are never read or stored
+ * in JS, so there is nothing here for XSS to steal.
+ */
+export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+  const response = await fetch(`${resolveBaseUrl()}${path}${toQueryString(options.query)}`, {
+    method: options.method ?? "GET",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+    cache: "no-store",
+  });
+
+  return handleResponse<T>(response);
+}
+
+/**
+ * Multipart upload variant of `apiFetch`, for endpoints that accept a file
+ * (e.g. lesson video uploads). Deliberately omits the `Content-Type` header
+ * — the browser sets `multipart/form-data` with the correct boundary itself
+ * when the body is a `FormData` instance; setting it manually breaks the
+ * boundary and the server can't parse the upload.
+ */
+export async function apiUpload<T>(
+  path: string,
+  formData: FormData,
+  options: { method?: "POST" | "PUT" } = {}
+): Promise<T> {
+  const response = await fetch(`${resolveBaseUrl()}${path}`, {
+    method: options.method ?? "POST",
+    credentials: "include",
+    body: formData,
+    cache: "no-store",
+  });
+
+  return handleResponse<T>(response);
 }

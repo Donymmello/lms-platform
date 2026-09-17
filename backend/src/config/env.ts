@@ -48,6 +48,18 @@ const envSchema = z.object({
   // fine for now, but replace with a real FX source before going live.
   PAYPAL_CURRENCY: z.string().default("USD"),
   PAYPAL_MZN_PER_USD_RATE: z.coerce.number().positive().default(64),
+
+  // --- Bunny Stream (video hosting + signed playback) ---
+  // https://bunny.net/docs/stream/ — create a Stream library in the
+  // dashboard to get the library id, API key (management API) and the
+  // separate "Token Authentication Key" (embed URL signing, found under the
+  // library's security settings — NOT the same as the API key).
+  BUNNY_STREAM_BASE_URL: z.string().url().default("https://video.bunnycdn.com"),
+  BUNNY_STREAM_LIBRARY_ID: z.string().default(""),
+  BUNNY_STREAM_API_KEY: z.string().default(""),
+  BUNNY_STREAM_TOKEN_AUTH_KEY: z.string().default(""),
+  // How long a signed embed URL stays valid once issued.
+  BUNNY_STREAM_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
 });
 
 export type Env = z.infer<typeof envSchema>;

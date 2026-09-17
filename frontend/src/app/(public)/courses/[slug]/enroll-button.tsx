@@ -91,7 +91,7 @@ export function EnrollButton({ courseId, courseSlug, priceCents }: EnrollButtonP
           <CheckCircle2 className="h-4 w-4" /> Já estás inscrito
         </p>
         <Button asChild variant="outline" className="w-full">
-          <Link href="/student/courses">Ir para os meus cursos</Link>
+          <Link href={`/student/courses/${courseSlug}`}>Ir para a aula</Link>
         </Button>
       </div>
     );

@@ -1,4 +1,4 @@
-import { apiFetch } from "@/services/api-client";
+import { apiFetch, apiUpload } from "@/services/api-client";
 import { ApiSuccessResponse } from "@/types/auth";
 import { CourseDetail, CourseStatus, ListCoursesParams, PaginatedCourses } from "@/types/course";
 
@@ -110,6 +110,29 @@ export const coursesService = {
   async removeLesson(courseId: string, moduleId: string, lessonId: string): Promise<CourseDetail> {
     const res = await apiFetch<ApiSuccessResponse<{ course: CourseDetail }>>(
       `/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`,
+      { method: "DELETE" }
+    );
+    return courseResponse(res);
+  },
+
+  async uploadLessonVideo(
+    courseId: string,
+    moduleId: string,
+    lessonId: string,
+    file: File
+  ): Promise<CourseDetail> {
+    const formData = new FormData();
+    formData.append("video", file);
+    const res = await apiUpload<ApiSuccessResponse<{ course: CourseDetail }>>(
+      `/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/video`,
+      formData
+    );
+    return courseResponse(res);
+  },
+
+  async removeLessonVideo(courseId: string, moduleId: string, lessonId: string): Promise<CourseDetail> {
+    const res = await apiFetch<ApiSuccessResponse<{ course: CourseDetail }>>(
+      `/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/video`,
       { method: "DELETE" }
     );
     return courseResponse(res);

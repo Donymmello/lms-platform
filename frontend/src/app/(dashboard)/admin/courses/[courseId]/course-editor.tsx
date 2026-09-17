@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { ArrowLeft, ArrowDown, ArrowUp, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowDown, ArrowUp, Film, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,11 @@ import { ApiError } from "@/services/api-client";
 import { coursesService } from "@/services/courses.service";
 import { CourseDetail, CourseModuleItem, LessonItem } from "@/types/course";
 import { CourseFormValues, courseFormSchema } from "@/validators/course.validator";
+
+// Kept in sync with the server-side limit in backend/src/middlewares/videoUpload.ts
+// — checked client-side purely so a huge file fails fast with a clear
+// message instead of after a slow upload.
+const MAX_VIDEO_BYTES = 500 * 1024 * 1024;
 
 interface CourseEditorProps {
   courseId: string;
@@ -482,6 +487,8 @@ function LessonRow({
 }) {
   const [title, setTitle] = useState(lesson.title);
   const [isBusy, setIsBusy] = useState(false);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handleApiError(err: unknown, fallback: string) {
     onError(err instanceof ApiError ? err.message : fallback);
@@ -544,6 +551,47 @@ function LessonRow({
     }
   }
 
+  function handleVideoButtonClick() {
+    fileInputRef.current?.click();
+  }
+
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Reset so selecting the same file again still fires onChange.
+    e.target.value = "";
+    if (!file) return;
+
+    if (!file.type.startsWith("video/")) {
+      onError("Só são aceites ficheiros de vídeo.");
+      return;
+    }
+    if (file.size > MAX_VIDEO_BYTES) {
+      onError("O vídeo excede o limite de 500MB.");
+      return;
+    }
+
+    setIsUploadingVideo(true);
+    try {
+      onCourseChange(await coursesService.uploadLessonVideo(courseId, moduleId, lesson.id, file));
+    } catch (err) {
+      handleApiError(err, "Não foi possível carregar o vídeo.");
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  }
+
+  async function handleRemoveVideo() {
+    if (!window.confirm("Remover o vídeo desta aula?")) return;
+    setIsUploadingVideo(true);
+    try {
+      onCourseChange(await coursesService.removeLessonVideo(courseId, moduleId, lesson.id));
+    } catch (err) {
+      handleApiError(err, "Não foi possível remover o vídeo.");
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  }
+
   return (
     <div className="flex items-center gap-2 rounded-md bg-secondary/40 px-2 py-1.5">
       <div className="flex flex-col">
@@ -580,6 +628,51 @@ function LessonRow({
         />
         Pré-visualização gratuita
       </label>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="video/*"
+        onChange={handleFileSelected}
+        className="hidden"
+      />
+      {lesson.hasVideo ? (
+        <div className="flex shrink-0 items-center gap-1">
+          <Badge variant="success" className="gap-1">
+            <Film className="h-3 w-3" />
+            Vídeo
+          </Badge>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={isUploadingVideo}
+            onClick={handleRemoveVideo}
+            aria-label="Remover vídeo"
+          >
+            {isUploadingVideo ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <X className="h-3.5 w-3.5 text-destructive" />
+            )}
+          </Button>
+        </div>
+      ) : (
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={isUploadingVideo}
+          onClick={handleVideoButtonClick}
+          className="shrink-0"
+        >
+          {isUploadingVideo ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Upload className="h-3.5 w-3.5" />
+          )}
+          Vídeo
+        </Button>
+      )}
+
       <Button variant="ghost" size="sm" disabled={isBusy} onClick={handleDelete} aria-label="Eliminar aula">
         <Trash2 className="h-3.5 w-3.5 text-destructive" />
       </Button>

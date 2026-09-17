@@ -35,4 +35,8 @@ export const lessonsRepository = {
   delete(id: string): Promise<Lesson> {
     return prisma.lesson.delete({ where: { id } });
   },
+
+  setVideo(id: string, bunnyVideoId: string | null): Promise<Lesson> {
+    return prisma.lesson.update({ where: { id }, data: { bunnyVideoId } });
+  },
 };

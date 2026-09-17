@@ -132,7 +132,7 @@ export const coursesService = {
       instructorId: actingUser.id,
     });
 
-    return requireCourseWithContent(created.id);
+    return toDetailDto(await requireCourseWithContent(created.id));
   },
 
   async update(id: string, input: UpdateCourseInput, actingUser: AuthenticatedUser): Promise<CourseDetailDto> {
@@ -140,7 +140,7 @@ export const coursesService = {
     assertCanManage(course, actingUser);
 
     await coursesRepository.update(id, input);
-    return requireCourseWithContent(id);
+    return toDetailDto(await requireCourseWithContent(id));
   },
 
   async updateStatus(
@@ -152,7 +152,7 @@ export const coursesService = {
     assertCanManage(course, actingUser);
 
     await coursesRepository.updateStatus(id, input.status);
-    return requireCourseWithContent(id);
+    return toDetailDto(await requireCourseWithContent(id));
   },
 
   async remove(id: string, actingUser: AuthenticatedUser): Promise<void> {

@@ -8,7 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApiError } from "@/services/api-client";
 import { enrollmentsService } from "@/services/enrollments.service";
+import { progressService } from "@/services/progress.service";
 import { MyEnrollment } from "@/types/enrollment";
+import { CourseProgressSummary } from "@/types/progress";
 
 function formatPrice(cents: number): string {
   return cents === 0
@@ -19,6 +21,9 @@ function formatPrice(cents: number): string {
 export default function StudentCoursesPage() {
   const [enrollments, setEnrollments] = useState<MyEnrollment[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Keyed by courseId. Best-effort — a failed fetch just means no progress
+  // bars render, not a blocking error for the whole page.
+  const [progressByCourse, setProgressByCourse] = useState<Record<string, CourseProgressSummary>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -32,6 +37,16 @@ export default function StudentCoursesPage() {
         if (!cancelled) {
           setError(err instanceof ApiError ? err.message : "Não foi possível carregar os teus cursos.");
         }
+      });
+
+    progressService
+      .getMySummary()
+      .then((summaries) => {
+        if (cancelled) return;
+        setProgressByCourse(Object.fromEntries(summaries.map((summary) => [summary.courseId, summary])));
+      })
+      .catch(() => {
+        // Progress bars are a nice-to-have on top of the course list.
       });
 
     return () => {
@@ -69,22 +84,39 @@ export default function StudentCoursesPage() {
 
       {enrollments && enrollments.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {enrollments.map((enrollment) => (
-            <Link key={enrollment.id} href={`/courses/${enrollment.course.slug}`}>
-              <Card className="flex h-full flex-col transition-colors hover:bg-secondary/40">
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-base">{enrollment.course.title}</CardTitle>
-                    <Badge variant="secondary">{formatPrice(enrollment.course.priceCents)}</Badge>
-                  </div>
-                  <CardDescription>Por {enrollment.course.instructor.name}</CardDescription>
-                </CardHeader>
-                <CardFooter className="mt-auto text-xs text-muted-foreground">
-                  {enrollment.course.moduleCount} {enrollment.course.moduleCount === 1 ? "módulo" : "módulos"}
-                </CardFooter>
-              </Card>
-            </Link>
-          ))}
+          {enrollments.map((enrollment) => {
+            const progress = progressByCourse[enrollment.course.id];
+            return (
+              <Link key={enrollment.id} href={`/student/courses/${enrollment.course.slug}`}>
+                <Card className="flex h-full flex-col transition-colors hover:bg-secondary/40">
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="text-base">{enrollment.course.title}</CardTitle>
+                      <Badge variant="secondary">{formatPrice(enrollment.course.priceCents)}</Badge>
+                    </div>
+                    <CardDescription>Por {enrollment.course.instructor.name}</CardDescription>
+                  </CardHeader>
+                  {progress && progress.totalLessons > 0 && (
+                    <div className="px-6">
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                        <div
+                          className="h-full rounded-full bg-emerald-600"
+                          style={{ width: `${progress.percent}%` }}
+                        />
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {progress.completedLessons} de {progress.totalLessons}{" "}
+                        {progress.totalLessons === 1 ? "aula" : "aulas"} · {progress.percent}%
+                      </p>
+                    </div>
+                  )}
+                  <CardFooter className="mt-auto text-xs text-muted-foreground">
+                    {enrollment.course.moduleCount} {enrollment.course.moduleCount === 1 ? "módulo" : "módulos"}
+                  </CardFooter>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

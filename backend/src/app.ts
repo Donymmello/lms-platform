@@ -9,6 +9,8 @@ import { coursesRouter } from "./modules/courses/courses.routes";
 import { publicCoursesRouter } from "./modules/public-courses/public-courses.routes";
 import { enrollmentsRouter } from "./modules/enrollments/enrollments.routes";
 import { paymentsRouter } from "./modules/payments/payments.routes";
+import { playbackRouter } from "./modules/playback/playback.routes";
+import { progressRouter } from "./modules/progress/progress.routes";
 import { errorHandler, notFoundHandler } from "./middlewares/errorHandler";
 
 export function createApp(): Express {
@@ -52,6 +54,8 @@ export function createApp(): Express {
   app.use("/api/v1/public/courses", publicCoursesRouter);
   app.use("/api/v1/enrollments", enrollmentsRouter);
   app.use("/api/v1/payments", paymentsRouter);
+  app.use("/api/v1/lessons", playbackRouter);
+  app.use("/api/v1/progress", progressRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

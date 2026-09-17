@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
+import multer from "multer";
 import { AppError } from "../errors";
 import { env } from "../config/env";
 
@@ -22,6 +23,14 @@ export function errorHandler(
       status: "error",
       message: "Validation failed",
       details: err.flatten().fieldErrors,
+    });
+    return;
+  }
+
+  if (err instanceof multer.MulterError) {
+    res.status(400).json({
+      status: "error",
+      message: err.code === "LIMIT_FILE_SIZE" ? "The file is too large" : err.message,
     });
     return;
   }
