@@ -40,3 +40,12 @@ htmlcov/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Node / TypeScript / Next.js
+node_modules/
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+npm-debug.log*
