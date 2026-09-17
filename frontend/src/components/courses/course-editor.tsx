@@ -24,9 +24,15 @@ const MAX_VIDEO_BYTES = 500 * 1024 * 1024;
 
 interface CourseEditorProps {
   courseId: string;
+  /**
+   * The area this editor is mounted under — "/admin" or "/instructor".
+   * Both roles author courses with the same screens; the backend already
+   * scopes what each one may touch, so only the links differ.
+   */
+  basePath: string;
 }
 
-export function CourseEditor({ courseId }: CourseEditorProps) {
+export function CourseEditor({ courseId, basePath }: CourseEditorProps) {
   const router = useRouter();
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,7 +78,7 @@ export function CourseEditor({ courseId }: CourseEditorProps) {
     setIsDeleting(true);
     try {
       await coursesService.remove(courseId);
-      router.push("/admin/courses");
+      router.push(`${basePath}/courses`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Não foi possível eliminar o curso.");
       setIsDeleting(false);
@@ -93,7 +99,7 @@ export function CourseEditor({ courseId }: CourseEditorProps) {
     <div className="max-w-3xl space-y-6">
       <div className="flex items-center justify-between">
         <Link
-          href="/admin/courses"
+          href={`${basePath}/courses`}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />

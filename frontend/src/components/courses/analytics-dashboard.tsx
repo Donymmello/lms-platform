@@ -81,7 +81,7 @@ function RevenueChart({ series }: { series: RevenueSeries }) {
   );
 }
 
-function CourseBreakdownTable({ courses }: { courses: CourseAnalytics[] }) {
+function CourseBreakdownTable({ courses, basePath }: { courses: CourseAnalytics[]; basePath: string }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
@@ -105,7 +105,7 @@ function CourseBreakdownTable({ courses }: { courses: CourseAnalytics[] }) {
             courses.map((course) => (
               <tr key={course.courseId} className="border-t border-border">
                 <td className="px-4 py-3 font-medium">
-                  <Link href={`/admin/courses/${course.courseId}`} className="hover:underline">
+                  <Link href={`${basePath}/courses/${course.courseId}`} className="hover:underline">
                     {course.title}
                   </Link>
                   <span className="ml-2 text-xs text-muted-foreground">{course.totalLessons} aulas</span>
@@ -134,7 +134,18 @@ function CourseBreakdownTable({ courses }: { courses: CourseAnalytics[] }) {
   );
 }
 
-export function AnalyticsDashboard() {
+interface AnalyticsDashboardProps {
+  /** The area this is mounted under — "/admin" or "/instructor". */
+  basePath: string;
+  /**
+   * User management is ADMIN-only, so the shortcut is hidden for an
+   * instructor. The numbers above it need no such guard: the backend
+   * already scopes them to the courses that instructor owns.
+   */
+  canManageUsers?: boolean;
+}
+
+export function AnalyticsDashboard({ basePath, canManageUsers = false }: AnalyticsDashboardProps) {
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [series, setSeries] = useState<RevenueSeries | null>(null);
   const [courses, setCourses] = useState<CourseAnalytics[] | null>(null);
@@ -239,11 +250,11 @@ export function AnalyticsDashboard() {
 
       <div className="space-y-3">
         <h2 className="text-lg font-semibold">Desempenho por curso</h2>
-        <CourseBreakdownTable courses={courses} />
+        <CourseBreakdownTable courses={courses} basePath={basePath} />
       </div>
 
       <div className="grid gap-4 sm:max-w-2xl sm:grid-cols-2">
-        <Link href="/admin/courses">
+        <Link href={`${basePath}/courses`}>
           <Card className="transition-colors hover:bg-secondary/40">
             <CardHeader className="flex-row items-center gap-3 space-y-0">
               <BookOpen className="h-5 w-5 text-muted-foreground" />
@@ -251,14 +262,16 @@ export function AnalyticsDashboard() {
             </CardHeader>
           </Card>
         </Link>
-        <Link href="/admin/users">
-          <Card className="transition-colors hover:bg-secondary/40">
-            <CardHeader className="flex-row items-center gap-3 space-y-0">
-              <Users className="h-5 w-5 text-muted-foreground" />
-              <CardTitle className="text-base">Gerir utilizadores</CardTitle>
-            </CardHeader>
-          </Card>
-        </Link>
+        {canManageUsers && (
+          <Link href="/admin/users">
+            <Card className="transition-colors hover:bg-secondary/40">
+              <CardHeader className="flex-row items-center gap-3 space-y-0">
+                <Users className="h-5 w-5 text-muted-foreground" />
+                <CardTitle className="text-base">Gerir utilizadores</CardTitle>
+              </CardHeader>
+            </Card>
+          </Link>
+        )}
       </div>
     </div>
   );

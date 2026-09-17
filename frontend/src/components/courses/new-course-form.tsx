@@ -14,7 +14,7 @@ import { ApiError } from "@/services/api-client";
 import { coursesService } from "@/services/courses.service";
 import { CourseFormValues, courseFormSchema } from "@/validators/course.validator";
 
-export function NewCourseForm() {
+export function NewCourseForm({ basePath }: { basePath: string }) {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -27,7 +27,7 @@ export function NewCourseForm() {
     setFormError(null);
     try {
       const course = await coursesService.create(values);
-      router.push(`/admin/courses/${course.id}`);
+      router.push(`${basePath}/courses/${course.id}`);
     } catch (error) {
       setFormError(error instanceof ApiError ? error.message : "Não foi possível criar o curso.");
     }

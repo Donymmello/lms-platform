@@ -5,7 +5,7 @@ const ACCESS_TOKEN_COOKIE = "access_token";
 const REFRESH_TOKEN_COOKIE = "refresh_token";
 
 const AUTH_PAGES = ["/login", "/register"];
-const PROTECTED_PREFIXES = ["/admin", "/student"];
+const PROTECTED_PREFIXES = ["/admin", "/instructor", "/student"];
 
 /**
  * Edge-level redirect guard. This only checks whether an auth cookie is
@@ -39,5 +39,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/student/:path*", "/login", "/register"],
+  matcher: ["/admin/:path*", "/instructor/:path*", "/student/:path*", "/login", "/register"],
 };

@@ -18,7 +18,7 @@ function formatPrice(cents: number): string {
   return (cents / 100).toLocaleString("pt-MZ", { style: "currency", currency: "MZN" });
 }
 
-export function CoursesList() {
+export function CoursesList({ basePath }: { basePath: string }) {
   const [data, setData] = useState<PaginatedCourses | null>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -119,7 +119,7 @@ export function CoursesList() {
               data?.courses.map((course) => (
                 <tr key={course.id} className="hover:bg-secondary/30">
                   <td className="px-4 py-3 font-medium">
-                    <Link href={`/admin/courses/${course.id}`} className="hover:underline">
+                    <Link href={`${basePath}/courses/${course.id}`} className="hover:underline">
                       {course.title}
                     </Link>
                   </td>

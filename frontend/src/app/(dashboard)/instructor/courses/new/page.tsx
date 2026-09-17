@@ -5,6 +5,6 @@ export const metadata: Metadata = {
   title: "Novo curso | LMS Platform",
 };
 
-export default function NewCoursePage() {
-  return <NewCourse basePath="/admin" />;
+export default function InstructorNewCoursePage() {
+  return <NewCourse basePath="/instructor" />;
 }

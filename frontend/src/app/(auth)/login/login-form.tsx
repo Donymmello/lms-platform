@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { homePathForRole } from "@/lib/routes";
 import { ApiError } from "@/services/api-client";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/store/auth.store";
@@ -33,7 +34,7 @@ export function LoginForm() {
       const user = await authService.login(values);
       setUser(user);
 
-      const destination = user.role === "STUDENT" ? "/student/courses" : "/admin";
+      const destination = homePathForRole(user.role);
       router.push(destination);
       router.refresh();
     } catch (error) {

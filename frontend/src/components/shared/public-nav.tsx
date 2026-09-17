@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { homePathForRole } from "@/lib/routes";
 
 export function PublicNav() {
   const router = useRouter();
@@ -35,7 +36,7 @@ export function PublicNav() {
           {!isLoading && user && (
             <>
               <Link
-                href={user.role === "STUDENT" ? "/student/courses" : "/admin"}
+                href={homePathForRole(user.role)}
                 className="rounded-full px-3.5 py-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               >
                 A minha área
