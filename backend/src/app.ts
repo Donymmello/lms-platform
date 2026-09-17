@@ -3,6 +3,7 @@ import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { env } from "./config/env";
+import { analyticsRouter } from "./modules/analytics/analytics.routes";
 import { authRouter } from "./modules/auth/auth.routes";
 import { usersRouter } from "./modules/users/users.routes";
 import { coursesRouter } from "./modules/courses/courses.routes";
@@ -56,6 +57,7 @@ export function createApp(): Express {
   app.use("/api/v1/payments", paymentsRouter);
   app.use("/api/v1/lessons", playbackRouter);
   app.use("/api/v1/progress", progressRouter);
+  app.use("/api/v1/analytics", analyticsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
