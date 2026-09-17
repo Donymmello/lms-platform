@@ -12,7 +12,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["var(--font-inter)", ...defaultTheme.fontFamily.sans],
+        sans: ["var(--font-archivo)", ...defaultTheme.fontFamily.sans],
+        display: ["var(--font-instrument)", ...defaultTheme.fontFamily.serif],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -40,6 +41,12 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Only defined inside the student area's "studio" theme; harmless
+        // elsewhere because nothing outside it uses the class.
+        elevated: "hsl(var(--elevated))",
+      },
+      maxWidth: {
+        shelf: "112rem",
       },
       borderRadius: {
         lg: "var(--radius)",

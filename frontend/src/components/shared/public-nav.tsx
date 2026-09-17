@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 
 export function PublicNav() {
@@ -16,40 +15,56 @@ export function PublicNav() {
   }
 
   return (
-    <header className="border-b border-border">
-      <div className="container flex h-16 items-center justify-between">
-        <Link href="/" className="text-lg font-semibold">
-          LMS Platform
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-shelf items-center justify-between gap-6 px-6 lg:px-10">
+        <Link href="/" className="group flex items-baseline gap-2.5">
+          <span className="font-display text-2xl leading-none tracking-tight">Estúdio</span>
+          <span className="hidden text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground transition-colors group-hover:text-primary sm:inline">
+            Aprendizagem
+          </span>
         </Link>
 
-        <nav className="flex items-center gap-4">
-          <Link href="/courses" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-            Cursos
+        <nav className="flex items-center gap-1.5 text-sm">
+          <Link
+            href="/courses"
+            className="rounded-full px-3.5 py-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          >
+            Catálogo
           </Link>
 
           {!isLoading && user && (
-            <div className="flex items-center gap-3">
+            <>
               <Link
                 href={user.role === "STUDENT" ? "/student/courses" : "/admin"}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground"
+                className="rounded-full px-3.5 py-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               >
                 A minha área
               </Link>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="rounded-full border border-border px-3.5 py-1.5 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+              >
                 Sair
-              </Button>
-            </div>
+              </button>
+            </>
           )}
 
           {!isLoading && !user && (
-            <div className="flex items-center gap-2">
-              <Button asChild variant="ghost" size="sm">
-                <Link href="/login">Entrar</Link>
-              </Button>
-              <Button asChild size="sm">
-                <Link href="/register">Criar conta</Link>
-              </Button>
-            </div>
+            <>
+              <Link
+                href="/login"
+                className="rounded-full px-3.5 py-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              >
+                Entrar
+              </Link>
+              <Link
+                href="/register"
+                className="rounded-full bg-primary px-4 py-1.5 font-medium text-primary-foreground transition-transform hover:scale-[1.04]"
+              >
+                Criar conta
+              </Link>
+            </>
           )}
         </nav>
       </div>

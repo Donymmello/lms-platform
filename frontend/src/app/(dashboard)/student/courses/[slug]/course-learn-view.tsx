@@ -2,9 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, CheckCircle2, Circle, Film, Loader2, Lock, PlayCircle } from "lucide-react";
+import { AlertCircle, ArrowLeft, Check, Film, Loader2, Lock, Play } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { ApiError } from "@/services/api-client";
 import { playbackService } from "@/services/playback.service";
 import { progressService } from "@/services/progress.service";
@@ -45,6 +44,13 @@ function firstLessonId(course: CourseDetail): string | null {
     if (lessons[0]) return lessons[0].id;
   }
   return null;
+}
+
+function formatDuration(seconds: number | null): string | null {
+  if (!seconds) return null;
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return `${minutes}:${String(remainder).padStart(2, "0")}`;
 }
 
 export function CourseLearnView({ slug }: CourseLearnViewProps) {
@@ -152,13 +158,23 @@ export function CourseLearnView({ slug }: CourseLearnViewProps) {
   }
 
   if (courseError) {
-    return <p className="text-sm font-medium text-destructive">{courseError}</p>;
+    return (
+      <div className="mx-auto max-w-shelf px-6 py-12 lg:px-10">
+        <p
+          role="alert"
+          className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
+        >
+          {courseError}
+        </p>
+      </div>
+    );
   }
 
   if (!course) {
     return (
-      <div className="flex justify-center py-16 text-muted-foreground">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="flex items-center justify-center gap-3 py-32 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="text-sm">A abrir a sala...</span>
       </div>
     );
   }
@@ -169,134 +185,222 @@ export function CourseLearnView({ slug }: CourseLearnViewProps) {
   );
 
   return (
-    <div className="space-y-6">
-      <div>
-        <Link href="/student/courses" className="text-sm text-muted-foreground hover:text-foreground">
-          ← Os meus cursos
-        </Link>
-        <h1 className="mt-2 text-2xl font-bold">{course.title}</h1>
-        <p className="text-muted-foreground">Por {course.instructor.name}</p>
+    <div>
+      {/* --- Stage: the video gets the full width and a warm bloom behind it. --- */}
+      <div className="relative border-b border-border/60 bg-black">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+        <div className="mx-auto max-w-[78rem] px-0 sm:px-6 lg:px-10">
+          <VideoPlayer playback={playback} courseSlug={course.slug} />
+        </div>
       </div>
 
-      {progress && <ProgressBar percent={progress.percent} completed={progress.completedLessons} total={progress.totalLessons} />}
+      <div className="mx-auto max-w-shelf px-6 py-8 lg:px-10 lg:py-10">
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+          <div className="min-w-0">
+            <Link
+              href="/student/courses"
+              className="inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-primary"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Os meus cursos
+            </Link>
+            <h1 className="mt-2 truncate font-display text-3xl tracking-tight sm:text-4xl">{course.title}</h1>
+            <p className="text-sm text-muted-foreground">Por {course.instructor.name}</p>
+          </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-3 lg:col-span-2">
-          <VideoPlayer playback={playback} courseSlug={course.slug} />
-          {selectedLesson && (
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="font-semibold">{selectedLesson.title}</h2>
-                {selectedLesson.description && (
-                  <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">
-                    {selectedLesson.description}
-                  </p>
-                )}
-              </div>
-              {progress && (
-                <Button
-                  variant={isSelectedLessonComplete ? "outline" : "default"}
-                  size="sm"
-                  disabled={isTogglingComplete}
-                  onClick={handleToggleComplete}
-                  className="shrink-0"
-                >
-                  {isTogglingComplete ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : isSelectedLessonComplete ? (
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                  ) : null}
-                  {isSelectedLessonComplete ? "Concluída" : "Marcar como concluída"}
-                </Button>
-              )}
-            </div>
+          {progress && progress.totalLessons > 0 && (
+            <ProgressDial
+              percent={progress.percent}
+              completed={progress.completedLessons}
+              total={progress.totalLessons}
+            />
           )}
         </div>
 
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-muted-foreground">Conteúdo do curso</h2>
-          {sortedModules.map((courseModule) => (
-            <div key={courseModule.id} className="rounded-lg border border-border">
-              <p className="border-b border-border px-3 py-2 text-sm font-medium">{courseModule.title}</p>
-              <ul className="divide-y divide-border">
-                {[...courseModule.lessons]
-                  .sort((a, b) => a.order - b.order)
-                  .map((lesson) => {
-                    const isComplete = Boolean(progress?.completedLessonIds.includes(lesson.id));
-                    return (
-                      <li key={lesson.id}>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedLessonId(lesson.id)}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-secondary/60 ${
-                            lesson.id === selectedLessonId ? "bg-secondary/80 font-medium" : ""
-                          }`}
-                        >
-                          {progress ? (
-                            isComplete ? (
-                              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                            ) : (
-                              <Circle className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
-                            )
-                          ) : lesson.hasVideo ? (
-                            <Film className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                          ) : (
-                            <span className="h-3.5 w-3.5 shrink-0" />
-                          )}
-                          <span className="flex-1">{lesson.title}</span>
-                          {lesson.isFreePreview ? (
-                            <PlayCircle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                          ) : (
-                            <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                          )}
-                        </button>
-                      </li>
-                    );
-                  })}
-                {courseModule.lessons.length === 0 && (
-                  <li className="px-3 py-2 text-sm text-muted-foreground">Sem aulas.</li>
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-10">
+          {/* --- Now playing --- */}
+          <div className="space-y-5">
+            {selectedLesson ? (
+              <>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-[0.7rem] uppercase tracking-[0.2em] text-primary">A reproduzir</p>
+                    <h2 className="font-display text-2xl tracking-tight">{selectedLesson.title}</h2>
+                  </div>
+
+                  {progress && (
+                    <button
+                      type="button"
+                      disabled={isTogglingComplete}
+                      onClick={handleToggleComplete}
+                      className={`inline-flex shrink-0 items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-all disabled:opacity-60 ${
+                        isSelectedLessonComplete
+                          ? "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
+                          : "bg-primary text-primary-foreground hover:scale-[1.03]"
+                      }`}
+                    >
+                      {isTogglingComplete ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : isSelectedLessonComplete ? (
+                        <Check className="h-4 w-4" />
+                      ) : null}
+                      {isSelectedLessonComplete ? "Concluída" : "Marcar como concluída"}
+                    </button>
+                  )}
+                </div>
+
+                {selectedLesson.description && (
+                  <p className="max-w-2xl whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+                    {selectedLesson.description}
+                  </p>
                 )}
-              </ul>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Este curso ainda não tem aulas.</p>
+            )}
+          </div>
+
+          {/* --- Lesson rail --- */}
+          <aside className="lg:sticky lg:top-24 lg:self-start">
+            <h2 className="mb-3 text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
+              Conteúdo do curso
+            </h2>
+
+            <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
+              {sortedModules.map((courseModule, moduleIndex) => (
+                <div key={courseModule.id} className="overflow-hidden rounded-xl border border-border bg-card">
+                  <div className="flex items-baseline gap-2.5 border-b border-border px-4 py-3">
+                    <span className="font-display text-lg leading-none text-primary/70">
+                      {String(moduleIndex + 1).padStart(2, "0")}
+                    </span>
+                    <p className="text-sm font-medium leading-snug">{courseModule.title}</p>
+                  </div>
+
+                  <ul>
+                    {[...courseModule.lessons]
+                      .sort((a, b) => a.order - b.order)
+                      .map((lesson) => {
+                        const isComplete = Boolean(progress?.completedLessonIds.includes(lesson.id));
+                        const isActive = lesson.id === selectedLessonId;
+                        const duration = formatDuration(lesson.durationSeconds);
+
+                        return (
+                          <li key={lesson.id}>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedLessonId(lesson.id)}
+                              aria-current={isActive ? "true" : undefined}
+                              className={`group relative flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                                isActive ? "bg-primary/[0.09]" : "hover:bg-secondary/70"
+                              }`}
+                            >
+                              {isActive && <span className="absolute inset-y-0 left-0 w-[2px] bg-primary" />}
+
+                              <span
+                                className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[0.65rem] transition-colors ${
+                                  isComplete
+                                    ? "border-primary bg-primary text-primary-foreground"
+                                    : isActive
+                                      ? "border-primary text-primary"
+                                      : "border-border text-muted-foreground group-hover:border-muted-foreground"
+                                }`}
+                              >
+                                {isComplete ? (
+                                  <Check className="h-3 w-3" />
+                                ) : isActive ? (
+                                  <Play className="h-2.5 w-2.5 translate-x-[0.5px] fill-current" />
+                                ) : (
+                                  lesson.order + 1
+                                )}
+                              </span>
+
+                              <span
+                                className={`flex-1 truncate text-[0.85rem] ${
+                                  isActive ? "font-medium text-foreground" : "text-muted-foreground"
+                                }`}
+                              >
+                                {lesson.title}
+                              </span>
+
+                              {duration && (
+                                <span className="shrink-0 text-[0.7rem] tabular-nums text-muted-foreground/70">
+                                  {duration}
+                                </span>
+                              )}
+
+                              {!lesson.hasVideo && (
+                                <Film className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
+                              )}
+                            </button>
+                          </li>
+                        );
+                      })}
+
+                    {courseModule.lessons.length === 0 && (
+                      <li className="px-4 py-3 text-sm text-muted-foreground">Sem aulas.</li>
+                    )}
+                  </ul>
+                </div>
+              ))}
             </div>
-          ))}
+          </aside>
         </div>
       </div>
     </div>
   );
 }
 
-function ProgressBar({ percent, completed, total }: { percent: number; completed: number; total: number }) {
+/** Compact progress ring — reads at a glance next to the course title. */
+function ProgressDial({ percent, completed, total }: { percent: number; completed: number; total: number }) {
+  const radius = 20;
+  const circumference = 2 * Math.PI * radius;
+
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-sm">
-        <span className="font-medium">Progresso</span>
-        <span className="text-muted-foreground">
-          {completed} de {total} {total === 1 ? "aula" : "aulas"} · {percent}%
+    <div className="flex items-center gap-3">
+      <div className="relative h-12 w-12">
+        <svg viewBox="0 0 48 48" className="h-full w-full -rotate-90">
+          <circle cx="24" cy="24" r={radius} fill="none" strokeWidth="3" className="stroke-secondary" />
+          <circle
+            cx="24"
+            cy="24"
+            r={radius}
+            fill="none"
+            strokeWidth="3"
+            strokeLinecap="round"
+            className="stroke-primary transition-[stroke-dashoffset] duration-700 ease-out"
+            strokeDasharray={circumference}
+            strokeDashoffset={circumference - (percent / 100) * circumference}
+          />
+        </svg>
+        <span className="absolute inset-0 grid place-items-center text-[0.7rem] font-medium tabular-nums">
+          {percent}%
         </span>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-        <div
-          className="h-full rounded-full bg-emerald-600 transition-all"
-          style={{ width: `${percent}%` }}
-        />
-      </div>
+      <p className="text-xs text-muted-foreground">
+        {completed} de {total}
+        <br />
+        {total === 1 ? "aula" : "aulas"}
+      </p>
     </div>
   );
 }
 
 function VideoPlayer({ playback, courseSlug }: { playback: PlaybackState; courseSlug: string }) {
+  const shell =
+    "flex aspect-video flex-col items-center justify-center gap-3 bg-[hsl(30_9%_4%)] px-6 text-center sm:rounded-b-2xl";
+
   if (playback.status === "loading") {
     return (
-      <div className="flex aspect-video items-center justify-center rounded-lg bg-secondary/60">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className={shell}>
+        <Loader2 className="h-7 w-7 animate-spin text-primary/70" />
       </div>
     );
   }
 
   if (playback.status === "no-video") {
     return (
-      <div className="flex aspect-video flex-col items-center justify-center gap-2 rounded-lg bg-secondary/60 text-center">
-        <Film className="h-8 w-8 text-muted-foreground" />
+      <div className={shell}>
+        <Film className="h-9 w-9 text-muted-foreground/60" />
         <p className="text-sm text-muted-foreground">Esta aula ainda não tem vídeo disponível.</p>
       </div>
     );
@@ -304,10 +408,13 @@ function VideoPlayer({ playback, courseSlug }: { playback: PlaybackState; course
 
   if (playback.status === "forbidden") {
     return (
-      <div className="flex aspect-video flex-col items-center justify-center gap-3 rounded-lg bg-secondary/60 p-6 text-center">
-        <Lock className="h-8 w-8 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">{playback.message}</p>
-        <Link href={`/courses/${courseSlug}`} className="text-sm font-medium underline">
+      <div className={shell}>
+        <Lock className="h-9 w-9 text-muted-foreground/60" />
+        <p className="max-w-sm text-sm text-muted-foreground">{playback.message}</p>
+        <Link
+          href={`/courses/${courseSlug}`}
+          className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-transform hover:scale-[1.03]"
+        >
           Ver detalhes de inscrição
         </Link>
       </div>
@@ -316,15 +423,15 @@ function VideoPlayer({ playback, courseSlug }: { playback: PlaybackState; course
 
   if (playback.status === "error") {
     return (
-      <div className="flex aspect-video flex-col items-center justify-center gap-2 rounded-lg bg-secondary/60 p-6 text-center">
-        <AlertCircle className="h-8 w-8 text-destructive" />
+      <div className={shell}>
+        <AlertCircle className="h-9 w-9 text-destructive" />
         <p className="text-sm text-destructive">{playback.message}</p>
       </div>
     );
   }
 
   return (
-    <div className="aspect-video overflow-hidden rounded-lg bg-black">
+    <div className="aspect-video overflow-hidden bg-black sm:rounded-b-2xl">
       <iframe
         key={playback.embedUrl}
         src={playback.embedUrl}

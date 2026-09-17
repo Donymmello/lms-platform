@@ -52,6 +52,44 @@
     --input: 217 33% 18%;
     --ring: 213 27% 84%;
   }
+
+  /*
+   * "Estúdio" — the student area's own skin. Scoped to a data attribute
+   * rather than the global `.dark` class so the admin panel keeps its light
+   * theme untouched. Every hue is warm (25–40°) instead of the stock
+   * blue-grey, so the black reads like a cinema wall rather than a dev tool.
+   */
+  [data-theme="studio"] {
+    --background: 30 9% 5%;
+    --foreground: 36 30% 96%;
+
+    --card: 30 8% 9%;
+    --card-foreground: 36 30% 96%;
+
+    /* Amber is the single accent: CTAs, progress, focus rings, the lot. */
+    --primary: 36 84% 58%;
+    --primary-foreground: 30 20% 8%;
+
+    --secondary: 30 7% 14%;
+    --secondary-foreground: 36 24% 92%;
+
+    --muted: 30 7% 14%;
+    --muted-foreground: 33 10% 62%;
+
+    --destructive: 6 72% 58%;
+    --destructive-foreground: 36 30% 96%;
+
+    --border: 32 8% 17%;
+    --input: 32 8% 17%;
+    --ring: 36 84% 58%;
+
+    --radius: 0.75rem;
+
+    /* Surfaces that sit above the canvas but below a card. */
+    --elevated: 30 8% 12%;
+    /* Warm wash used behind the hero and the video stage. */
+    --glow: 36 84% 58%;
+  }
 }
 
 @layer base {
@@ -60,5 +98,71 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  [data-theme="studio"] {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  /*
+   * Film grain. A single inline SVG turbulence tile, fixed to the viewport
+   * so it never scrolls with content — it keeps large flat blacks from
+   * banding on cheap panels and gives the whole surface some tooth.
+   */
+  [data-theme="studio"]::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+@layer components {
+  /*
+   * Horizontal shelves are plain scroll containers with snap points — no
+   * carousel library. Keyboard, trackpad and touch all work for free, and
+   * the arrow buttons just call scrollBy().
+   */
+  .shelf {
+    @apply flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-2;
+    scrollbar-width: none;
+  }
+  .shelf::-webkit-scrollbar {
+    display: none;
+  }
+  .shelf > * {
+    @apply snap-start;
+  }
+}
+
+@layer utilities {
+  /* Staggered entrance for shelf cards; `--i` carries the index. */
+  .rise {
+    animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 45ms);
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rise {
+      animation: none;
+    }
+    .shelf {
+      scroll-behavior: auto;
+    }
   }
 }

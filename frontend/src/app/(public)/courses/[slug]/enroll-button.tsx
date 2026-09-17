@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { ApiError } from "@/services/api-client";
 import { enrollmentsService } from "@/services/enrollments.service";
@@ -17,6 +16,11 @@ interface EnrollButtonProps {
   courseSlug: string;
   priceCents: number;
 }
+
+const PRIMARY_BUTTON =
+  "inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-transform hover:scale-[1.02] disabled:pointer-events-none disabled:opacity-60";
+const GHOST_BUTTON =
+  "inline-flex w-full items-center justify-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium transition-colors hover:border-primary/50";
 
 const PROVIDERS: { value: PaymentProvider; label: string }[] = [
   { value: "MPESA", label: "M-Pesa" },
@@ -70,29 +74,36 @@ export function EnrollButton({ courseId, courseSlug, priceCents }: EnrollButtonP
 
   if (isLoading) {
     return (
-      <Button disabled className="w-full">
+      <button type="button" disabled className={PRIMARY_BUTTON}>
         <Loader2 className="h-4 w-4 animate-spin" />
-      </Button>
+      </button>
     );
   }
 
   if (!user) {
     return (
-      <Button className="w-full" onClick={() => router.push(`/login?from=/courses/${courseSlug}`)}>
+      <button
+        type="button"
+        className={PRIMARY_BUTTON}
+        onClick={() => router.push(`/login?from=/courses/${courseSlug}`)}
+      >
         Entrar para te inscreveres
-      </Button>
+      </button>
     );
   }
 
   if (status === "enrolled") {
     return (
-      <div className="space-y-2">
-        <p className="flex items-center gap-2 text-sm font-medium text-emerald-700">
-          <CheckCircle2 className="h-4 w-4" /> Já estás inscrito
+      <div className="space-y-3">
+        <p className="flex items-center gap-2 text-sm font-medium text-primary">
+          <span className="grid h-5 w-5 place-items-center rounded-full bg-primary text-primary-foreground">
+            <Check className="h-3 w-3" />
+          </span>
+          Já estás inscrito
         </p>
-        <Button asChild variant="outline" className="w-full">
-          <Link href={`/student/courses/${courseSlug}`}>Ir para a aula</Link>
-        </Button>
+        <Link href={`/student/courses/${courseSlug}`} className={GHOST_BUTTON}>
+          Ir para a aula
+        </Link>
       </div>
     );
   }
@@ -100,10 +111,15 @@ export function EnrollButton({ courseId, courseSlug, priceCents }: EnrollButtonP
   if (!isPaid) {
     return (
       <div className="space-y-2">
-        <Button className="w-full" onClick={handleFreeEnroll} disabled={status === "submitting"}>
+        <button
+          type="button"
+          className={PRIMARY_BUTTON}
+          onClick={handleFreeEnroll}
+          disabled={status === "submitting"}
+        >
           {status === "submitting" && <Loader2 className="h-4 w-4 animate-spin" />}
           Inscrever-me
-        </Button>
+        </button>
         {error && (
           <p role="alert" className="text-sm font-medium text-destructive">
             {error}
@@ -115,18 +131,21 @@ export function EnrollButton({ courseId, courseSlug, priceCents }: EnrollButtonP
 
   return (
     <div className="space-y-3">
-      <div className="space-y-1.5">
-        <p className="text-sm font-medium">Método de pagamento</p>
+      <div className="space-y-2">
+        <p className="text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
+          Método de pagamento
+        </p>
         <div className="grid grid-cols-3 gap-2">
           {PROVIDERS.map((option) => (
             <button
               key={option.value}
               type="button"
               onClick={() => setProvider(option.value)}
-              className={`rounded-md border px-2 py-2 text-sm font-medium transition-colors ${
+              aria-pressed={provider === option.value}
+              className={`rounded-lg border px-2 py-2.5 text-xs font-medium transition-colors ${
                 provider === option.value
                   ? "border-primary bg-primary/10 text-primary"
-                  : "border-input hover:bg-secondary"
+                  : "border-border text-muted-foreground hover:border-muted-foreground hover:text-foreground"
               }`}
             >
               {option.label}
@@ -135,10 +154,15 @@ export function EnrollButton({ courseId, courseSlug, priceCents }: EnrollButtonP
         </div>
       </div>
 
-      <Button className="w-full" onClick={handleCheckout} disabled={status === "submitting"}>
+      <button
+        type="button"
+        className={PRIMARY_BUTTON}
+        onClick={handleCheckout}
+        disabled={status === "submitting"}
+      >
         {status === "submitting" && <Loader2 className="h-4 w-4 animate-spin" />}
         Pagar e inscrever-me
-      </Button>
+      </button>
 
       {error && (
         <p role="alert" className="text-sm font-medium text-destructive">
