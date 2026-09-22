@@ -25,7 +25,7 @@ function toUserResponseDto(user: User): UserResponseDto {
 }
 
 /** Issues a fresh access/refresh token pair and persists the refresh token's hash. */
-async function issueTokens(user: User): Promise<AuthTokensDto> {
+export async function issueTokens(user: User): Promise<AuthTokensDto> {
   const accessToken = signAccessToken({ sub: user.id, role: user.role });
 
   const tokenId = newTokenId();

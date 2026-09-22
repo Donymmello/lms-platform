@@ -1,9 +1,17 @@
 import { Request, Response } from "express";
+import { setAuthCookies } from "../../constants/cookies";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { ListUsersQuery, UpdateUserRoleInput, UpdateUserStatusInput, UserIdParam } from "./schemas/user.schema";
 import { usersService } from "./users.service";
 
 export const usersController = {
+  becomeInstructor: asyncHandler(async (req: Request, res: Response) => {
+    const { user, tokens } = await usersService.becomeInstructor(req.user!.id);
+    // Replaces the session so the new role takes effect on the very next request.
+    setAuthCookies(res, tokens);
+    res.status(200).json({ status: "success", data: { user } });
+  }),
+
   // `req.query` is typed by Express as `ParsedQs` (raw strings), but the
   // `validate(listUsersQuerySchema, "query")` middleware that always runs
   // before this handler replaces it at runtime with a parsed/coerced

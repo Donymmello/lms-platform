@@ -33,6 +33,15 @@ export function PublicNav() {
             Catálogo
           </Link>
 
+          {!isLoading && (!user || user.role === "STUDENT") && (
+            <Link
+              href="/ensinar"
+              className="hidden rounded-full px-3.5 py-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:inline-block"
+            >
+              Ensinar
+            </Link>
+          )}
+
           {!isLoading && user && (
             <>
               <Link

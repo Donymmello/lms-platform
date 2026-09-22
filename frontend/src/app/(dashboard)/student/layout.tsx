@@ -33,6 +33,12 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             >
               Catálogo
             </Link>
+            <Link
+              href="/ensinar"
+              className="hidden rounded-full px-3.5 py-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:inline-block"
+            >
+              Ensinar
+            </Link>
           </nav>
 
           <div className="shrink-0">

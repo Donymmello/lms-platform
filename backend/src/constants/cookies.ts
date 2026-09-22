@@ -1,4 +1,4 @@
-import { CookieOptions } from "express";
+import { CookieOptions, Response } from "express";
 import { env } from "../config/env";
 
 export const ACCESS_TOKEN_COOKIE = "access_token";
@@ -49,4 +49,32 @@ export function clearAccessTokenCookieOptions(): CookieOptions {
 
 export function clearRefreshTokenCookieOptions(): CookieOptions {
   return { ...baseCookieOptions, path: REFRESH_TOKEN_COOKIE_PATH };
+}
+
+/**
+ * Writes a freshly issued token pair to the response. Shared because more
+ * than one flow hands out a session: signing in, refreshing, and any change
+ * that alters what the access token asserts about the user (their role is
+ * baked into the JWT, so it has to be re-issued rather than waiting out the
+ * old token's expiry).
+ */
+export function setAuthCookies(
+  res: Response,
+  tokens: { accessToken: string; refreshToken: string }
+): void {
+  res.cookie(
+    ACCESS_TOKEN_COOKIE,
+    tokens.accessToken,
+    accessTokenCookieOptions(parseExpiryToMs(env.JWT_ACCESS_EXPIRES_IN))
+  );
+  res.cookie(
+    REFRESH_TOKEN_COOKIE,
+    tokens.refreshToken,
+    refreshTokenCookieOptions(parseExpiryToMs(env.JWT_REFRESH_EXPIRES_IN))
+  );
+}
+
+export function clearAuthCookies(res: Response): void {
+  res.clearCookie(ACCESS_TOKEN_COOKIE, clearAccessTokenCookieOptions());
+  res.clearCookie(REFRESH_TOKEN_COOKIE, clearRefreshTokenCookieOptions());
 }

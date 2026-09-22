@@ -1,38 +1,9 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { UnauthorizedError } from "../../errors";
-import { env } from "../../config/env";
-import {
-  ACCESS_TOKEN_COOKIE,
-  REFRESH_TOKEN_COOKIE,
-  accessTokenCookieOptions,
-  clearAccessTokenCookieOptions,
-  clearRefreshTokenCookieOptions,
-  parseExpiryToMs,
-  refreshTokenCookieOptions,
-} from "../../constants/cookies";
+import { REFRESH_TOKEN_COOKIE, clearAuthCookies, setAuthCookies } from "../../constants/cookies";
 import { authService } from "./auth.service";
-import { AuthTokensDto } from "./dtos/auth.dto";
 import { LoginInput, RegisterInput } from "./schemas/auth.schema";
-
-/** Sets both the access and refresh token cookies on the response. */
-function setAuthCookies(res: Response, tokens: AuthTokensDto): void {
-  res.cookie(
-    ACCESS_TOKEN_COOKIE,
-    tokens.accessToken,
-    accessTokenCookieOptions(parseExpiryToMs(env.JWT_ACCESS_EXPIRES_IN))
-  );
-  res.cookie(
-    REFRESH_TOKEN_COOKIE,
-    tokens.refreshToken,
-    refreshTokenCookieOptions(parseExpiryToMs(env.JWT_REFRESH_EXPIRES_IN))
-  );
-}
-
-function clearAuthCookies(res: Response): void {
-  res.clearCookie(ACCESS_TOKEN_COOKIE, clearAccessTokenCookieOptions());
-  res.clearCookie(REFRESH_TOKEN_COOKIE, clearRefreshTokenCookieOptions());
-}
 
 export const authController = {
   register: asyncHandler(async (req: Request<unknown, unknown, RegisterInput>, res: Response) => {
