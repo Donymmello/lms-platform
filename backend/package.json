@@ -13,7 +13,8 @@
     "prisma:deploy": "prisma migrate deploy",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "seed:demo": "ts-node --transpile-only seed-demo.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",

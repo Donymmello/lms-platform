@@ -26,6 +26,22 @@ As dependências vivem dentro dos containers (o compose usa volumes anónimos pa
 docker exec lms_backend ./node_modules/.bin/prisma migrate dev --name <nome>
 ```
 
+## Dados de demonstração
+
+A área do aluno só mostra alguma coisa se houver inscrições e progresso. Para semear um cenário completo — três cursos com módulos e aulas, um a meio, um por começar e um concluído:
+
+```bash
+docker exec lms_backend npm run seed:demo
+```
+
+Tudo o que cria leva um id começado em `5eed`, e o `--clean` remove exatamente isso e nada mais:
+
+```bash
+docker exec lms_backend npm run seed:demo -- --clean
+```
+
+Correr sem `--clean` limpa e volta a semear, por isso não duplica. O aluno e os cursos que espera encontrar estão no topo de `backend/seed-demo.ts`.
+
 ## Testes
 
 Os testes do backend correm contra uma base de dados Postgres real e dedicada (`lms_db_test`), não contra mocks do Prisma — as regras que interessam (acesso ao vídeo, RBAC, ownership, idempotência de webhooks, agregações) vivem em queries, e mockar o ORM não as testaria.
