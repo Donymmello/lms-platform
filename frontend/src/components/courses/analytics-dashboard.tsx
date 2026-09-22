@@ -72,7 +72,7 @@ function RevenueChart({ series }: { series: RevenueSeries }) {
           className="group relative flex-1 rounded-t-sm bg-primary/20 transition-colors hover:bg-primary/40"
           style={{ height: `${Math.max(2, (point.revenueCents / peak) * 100)}%` }}
         >
-          <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded border border-border bg-popover px-2 py-1 text-xs shadow group-hover:block">
+          <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded border border-border bg-card px-2 py-1 text-xs shadow group-hover:block">
             {formatDayLabel(point.date)} · {formatCurrency(point.revenueCents)}
           </span>
         </div>
