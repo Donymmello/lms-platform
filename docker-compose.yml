@@ -39,6 +39,21 @@ services:
     depends_on:
       - postgres
 
+  # --- MAIL CATCHER (dev only) ---
+  # Accepts every message the backend sends and shows it at
+  # http://localhost:8025 instead of delivering it. Nothing leaves the
+  # machine, so testing signup and payment emails needs no real mailbox and
+  # cannot accidentally write to a customer.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: lms_mailpit
+    restart: always
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
   # --- BACKEND (Node.js + Express + Prisma) ---
   backend:
     build:
@@ -58,6 +73,14 @@ services:
       JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      # Defaults to the dev mail catcher. Point these at a real SMTP server
+      # (Gmail, cPanel, Resend, SendGrid) to actually deliver mail.
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      MAIL_FROM: ${MAIL_FROM:-Estúdio <nao-responder@localhost>}
       COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
       # Used to build absolute return/webhook URLs handed to payment
       # gateways. PUBLIC_API_URL in particular must be reachable from the

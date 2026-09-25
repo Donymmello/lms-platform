@@ -1,6 +1,9 @@
 import { CourseStatus } from "@prisma/client";
 import { ConflictError, ForbiddenError, NotFoundError } from "../../errors";
 import { AuthenticatedUser } from "../../@types/express";
+import { mailer } from "../../integrations/mailer";
+import { notifications } from "../../notifications/notifications";
+import { usersRepository } from "../users/users.repository";
 import { coursesRepository } from "../courses/courses.repository";
 import { toListItemDto } from "../courses/courses.service";
 import { EnrollmentDto, MyEnrollmentDto } from "./dtos/enrollment.dto";
@@ -26,6 +29,14 @@ export const enrollmentsService = {
     }
 
     const enrollment = await enrollmentsRepository.create(actingUser.id, course.id);
+
+    // `actingUser` carries only an id and a role, so the recipient has to be
+    // looked up — but only when there is somewhere to send it.
+    if (mailer.isEnabled()) {
+      const user = await usersRepository.findById(actingUser.id);
+      if (user) notifications.enrolled(user, course);
+    }
+
     return {
       id: enrollment.id,
       courseId: enrollment.courseId,

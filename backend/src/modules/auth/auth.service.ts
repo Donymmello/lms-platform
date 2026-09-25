@@ -10,6 +10,7 @@ import {
 } from "../../utils/jwt";
 import { parseExpiryToMs } from "../../constants/cookies";
 import { env } from "../../config/env";
+import { notifications } from "../../notifications/notifications";
 import { authRepository } from "./auth.repository";
 import { AuthResultDto, AuthTokensDto, UserResponseDto } from "./dtos/auth.dto";
 import { LoginInput, RegisterInput } from "./schemas/auth.schema";
@@ -55,6 +56,7 @@ export const authService = {
     });
 
     const tokens = await issueTokens(user);
+    notifications.userRegistered(user);
     return { user: toUserResponseDto(user), tokens };
   },
 

@@ -3,6 +3,9 @@ import { PaymentProvider, PaymentStatus } from "@prisma/client";
 import { AppError, ConflictError, ForbiddenError, NotFoundError } from "../../errors";
 import { AuthenticatedUser } from "../../@types/express";
 import { env } from "../../config/env";
+import { mailer } from "../../integrations/mailer";
+import { notifications } from "../../notifications/notifications";
+import { usersRepository } from "../users/users.repository";
 import { coursesRepository } from "../courses/courses.repository";
 import { enrollmentsRepository } from "../enrollments/enrollments.repository";
 import { CheckoutResultDto, MyPaymentDto } from "./dtos/payment.dto";
@@ -41,6 +44,21 @@ async function completePayment(paymentId: string, rawPayload?: unknown): Promise
       typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === "P2002";
     if (!isUniqueViolation) {
       throw error;
+    }
+  }
+
+  // The money has cleared and the course is unlocked either way; the receipt
+  // is a courtesy on top, so it must not be able to fail this function.
+  if (mailer.isEnabled()) {
+    const [user, course] = await Promise.all([
+      usersRepository.findById(payment.userId),
+      coursesRepository.findById(payment.courseId),
+    ]);
+    if (user && course) {
+      notifications.paymentCompleted(user, course, {
+        amountCents: payment.amountCents,
+        currency: payment.currency,
+      });
     }
   }
 }

@@ -49,6 +49,26 @@ const envSchema = z.object({
   PAYPAL_CURRENCY: z.string().default("USD"),
   PAYPAL_MZN_PER_USD_RATE: z.coerce.number().positive().default(64),
 
+  // --- Outgoing email (SMTP) ---
+  // Plain SMTP rather than one vendor's SDK, so the same code works with a
+  // mail catcher in dev and with Gmail, cPanel, Resend or SendGrid in
+  // production — all of them speak SMTP. Leaving SMTP_HOST empty disables
+  // sending entirely: the app still runs and every notification becomes a
+  // no-op (see integrations/mailer.ts), which is what tests and a fresh
+  // checkout want.
+  SMTP_HOST: z.string().default(""),
+  SMTP_PORT: z.coerce.number().int().positive().default(1025),
+  SMTP_USER: z.string().default(""),
+  SMTP_PASSWORD: z.string().default(""),
+  /// True for port 465 (implicit TLS). Port 587 and the dev catcher use STARTTLS or nothing.
+  /// Not `z.coerce.boolean()`: that is `Boolean(value)`, so the string
+  /// "false" would come out as true and force TLS onto a plaintext port.
+  SMTP_SECURE: z
+    .string()
+    .default("false")
+    .transform((value) => value.trim().toLowerCase() === "true"),
+  MAIL_FROM: z.string().default("Estúdio <nao-responder@localhost>"),
+
   // --- Bunny Stream (video hosting + signed playback) ---
   // https://bunny.net/docs/stream/ — create a Stream library in the
   // dashboard to get the library id, API key (management API) and the

@@ -42,6 +42,27 @@ docker exec lms_backend npm run seed:demo -- --clean
 
 Correr sem `--clean` limpa e volta a semear, por isso não duplica. O aluno e os cursos que espera encontrar estão no topo de `backend/seed-demo.ts`.
 
+## Emails
+
+O backend envia três notificações: boas-vindas no registo, confirmação de inscrição gratuita, e recibo quando um pagamento é confirmado.
+
+Em desenvolvimento nada sai da máquina — o compose inclui um **Mailpit** que apanha tudo e mostra em http://localhost:8025.
+
+Para enviar a sério, aponta as variáveis a um servidor SMTP qualquer (Gmail, cPanel, Resend, SendGrid):
+
+```
+SMTP_HOST=smtp.exemplo.com
+SMTP_PORT=587
+SMTP_USER=...
+SMTP_PASSWORD=...
+SMTP_SECURE=false        # true só na porta 465
+MAIL_FROM=Estúdio <nao-responder@oteudominio.com>
+```
+
+Com `SMTP_HOST` vazio o envio fica desligado e a aplicação corre à mesma — é assim que os testes e um checkout novo funcionam.
+
+Enviar nunca faz falhar o pedido que o originou: um servidor de email em baixo não transforma um registo ou um pagamento concluído num erro.
+
 ## Testes
 
 Os testes do backend correm contra uma base de dados Postgres real e dedicada (`lms_db_test`), não contra mocks do Prisma — as regras que interessam (acesso ao vídeo, RBAC, ownership, idempotência de webhooks, agregações) vivem em queries, e mockar o ORM não as testaria.
