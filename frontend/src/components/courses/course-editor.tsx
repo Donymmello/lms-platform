@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { ArrowLeft, ArrowDown, ArrowUp, Film, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import { ArrowLeft, ArrowDown, ArrowUp, Film, Loader2, Plus, Radio, Trash2, Upload, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -106,6 +106,12 @@ export function CourseEditor({ courseId, basePath }: CourseEditorProps) {
           Cursos
         </Link>
         <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href={`${basePath}/courses/${courseId}/live`}>
+              <Radio className="h-3.5 w-3.5" />
+              Aulas ao vivo
+            </Link>
+          </Button>
           <Badge variant={course.status === "PUBLISHED" ? "success" : "secondary"}>
             {course.status === "PUBLISHED" ? "Publicado" : "Rascunho"}
           </Badge>

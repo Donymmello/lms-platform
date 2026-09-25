@@ -78,9 +78,10 @@ model Course {
   instructorId String
   instructor   User   @relation(fields: [instructorId], references: [id], onDelete: Restrict)
 
-  modules     CourseModule[]
-  enrollments Enrollment[]
-  payments    Payment[]
+  modules      CourseModule[]
+  enrollments  Enrollment[]
+  payments     Payment[]
+  liveSessions LiveSession[]
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
@@ -149,6 +150,26 @@ model LessonProgress {
   @@unique([userId, lessonId])
   @@index([lessonId])
   @@map("lesson_progress")
+}
+
+/// A scheduled live class for a course. The platform does not host the call:
+/// the instructor pastes a meeting link (Zoom, Meet, whatever they already
+/// use) and this row carries the schedule around it. `joinUrl` is only ever
+/// sent to someone entitled to attend — see live-sessions.service.ts.
+model LiveSession {
+  id              String   @id @default(uuid())
+  courseId        String
+  course          Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title           String
+  description     String   @default("")
+  joinUrl         String
+  startsAt        DateTime
+  durationMinutes Int      @default(60)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([courseId, startsAt])
+  @@map("live_sessions")
 }
 
 /// A user's enrollment in a course. Free courses (priceCents = 0) create

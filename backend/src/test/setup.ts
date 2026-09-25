@@ -29,6 +29,7 @@ if (!databaseName.endsWith("_test")) {
  */
 const TABLES = [
   "lesson_progress",
+  "live_sessions",
   "enrollments",
   "payments",
   "lessons",

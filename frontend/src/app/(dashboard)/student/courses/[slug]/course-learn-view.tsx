@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AlertCircle, ArrowLeft, Check, Film, Loader2, Lock, Play } from "lucide-react";
 
 import { ApiError } from "@/services/api-client";
+import { LiveSessionsPanel } from "./live-sessions-panel";
 import { playbackService } from "@/services/playback.service";
 import { progressService } from "@/services/progress.service";
 import { publicCoursesService } from "@/services/public-courses.service";
@@ -262,6 +263,8 @@ export function CourseLearnView({ slug }: CourseLearnViewProps) {
 
           {/* --- Lesson rail --- */}
           <aside className="lg:sticky lg:top-24 lg:self-start">
+            <LiveSessionsPanel courseId={course.id} />
+
             <h2 className="mb-3 text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
               Conteúdo do curso
             </h2>

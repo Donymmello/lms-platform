@@ -1,8 +1,8 @@
-import { CourseStatus, Role } from "@prisma/client";
+import { CourseStatus } from "@prisma/client";
 import { ForbiddenError, NotFoundError } from "../../errors";
 import { AuthenticatedUser } from "../../@types/express";
 import { CourseWithDetailRelations } from "../courses/courses.repository";
-import { requireCourseWithContent } from "../courses/courses.service";
+import { assertCanAccessCourse, requireCourseWithContent } from "../courses/courses.service";
 import { enrollmentsRepository } from "../enrollments/enrollments.repository";
 import { resolveAccess } from "../playback/playback.service";
 import { playbackRepository } from "../playback/playback.repository";
@@ -43,16 +43,11 @@ export const progressService = {
   async getCourseProgress(courseId: string, actingUser: AuthenticatedUser): Promise<CourseProgressDto> {
     const course = await requireCourseWithContent(courseId);
 
-    const isManager =
-      actingUser.role === Role.ADMIN ||
-      (actingUser.role === Role.INSTRUCTOR && course.instructorId === actingUser.id);
-
-    if (!isManager) {
-      const enrollment = await enrollmentsRepository.findByUserAndCourse(actingUser.id, courseId);
-      if (!enrollment) {
-        throw new ForbiddenError("You need to be enrolled in this course to see your progress");
-      }
-    }
+    await assertCanAccessCourse(
+      course,
+      actingUser,
+      "You need to be enrolled in this course to see your progress"
+    );
 
     // `detailInclude` already orders modules and, within each, lessons — so
     // this flatMap is the course's real curriculum order.

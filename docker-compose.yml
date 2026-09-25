@@ -16,7 +16,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lms_password}
       POSTGRES_DB: ${POSTGRES_DB:-lms_db}
     ports:
-      - "5432:5432"
+      # Host-side only, for psql/Adminer from outside Docker. The backend
+      # reaches Postgres as `postgres:5432` over the compose network, so this
+      # can be any free host port — 5432 itself is often taken by another
+      # project's database.
+      - "${POSTGRES_HOST_PORT:-5434}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
