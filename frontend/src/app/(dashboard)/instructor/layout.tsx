@@ -25,22 +25,22 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
             </span>
           </Link>
 
-          <nav className="flex items-center gap-1 text-sm">
+          <nav className="flex min-w-0 items-center gap-1 overflow-x-auto text-sm [scrollbar-width:none]">
             <Link
               href="/instructor"
-              className="rounded-full px-3.5 py-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              className="whitespace-nowrap rounded-full px-3.5 py-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               Painel
             </Link>
             <Link
               href="/instructor/courses"
-              className="rounded-full px-3.5 py-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              className="whitespace-nowrap rounded-full px-3.5 py-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               Os meus cursos
             </Link>
             <Link
               href="/student/courses"
-              className="hidden rounded-full px-3.5 py-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:inline-block"
+              className="hidden whitespace-nowrap rounded-full px-3.5 py-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:inline-block"
             >
               Aprender
             </Link>

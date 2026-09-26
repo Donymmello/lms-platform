@@ -20,22 +20,22 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             </span>
           </Link>
 
-          <nav className="flex items-center gap-1 text-sm">
+          <nav className="flex min-w-0 items-center gap-1 overflow-x-auto text-sm [scrollbar-width:none]">
             <Link
               href="/student/courses"
-              className="rounded-full px-3.5 py-1.5 text-foreground transition-colors hover:bg-secondary"
+              className="whitespace-nowrap rounded-full px-3.5 py-1.5 text-foreground transition-colors hover:bg-secondary"
             >
               Os meus cursos
             </Link>
             <Link
               href="/courses"
-              className="rounded-full px-3.5 py-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              className="whitespace-nowrap rounded-full px-3.5 py-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               Catálogo
             </Link>
             <Link
               href="/ensinar"
-              className="hidden rounded-full px-3.5 py-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:inline-block"
+              className="hidden whitespace-nowrap rounded-full px-3.5 py-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:inline-block"
             >
               Ensinar
             </Link>

@@ -106,6 +106,15 @@
   }
 
   /*
+   * A studio area paints the page itself, not just its own box: if anything
+   * inside overflows and the page scrolls sideways, the strip beyond the
+   * wrapper would otherwise show the default white body.
+   */
+  body:has([data-theme="studio"]) {
+    background-color: hsl(30 9% 5%);
+  }
+
+  /*
    * Film grain. A single inline SVG turbulence tile, fixed to the viewport
    * so it never scrolls with content — it keeps large flat blacks from
    * banding on cheap panels and gives the whole surface some tooth.

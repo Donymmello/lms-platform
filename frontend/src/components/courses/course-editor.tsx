@@ -9,6 +9,7 @@ import { ArrowLeft, ArrowDown, ArrowUp, Film, Loader2, Plus, Radio, Trash2, Uplo
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/shared/confirm-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -73,7 +74,6 @@ export function CourseEditor({ courseId, basePath }: CourseEditorProps) {
 
   async function handleDelete() {
     if (!course) return;
-    if (!window.confirm(`Eliminar "${course.title}"? Esta ação não pode ser desfeita.`)) return;
 
     setIsDeleting(true);
     try {
@@ -97,7 +97,7 @@ export function CourseEditor({ courseId, basePath }: CourseEditorProps) {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           href={`${basePath}/courses`}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -105,7 +105,7 @@ export function CourseEditor({ courseId, basePath }: CourseEditorProps) {
           <ArrowLeft className="h-4 w-4" />
           Cursos
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button asChild variant="outline" size="sm">
             <Link href={`${basePath}/courses/${courseId}/live`}>
               <Radio className="h-3.5 w-3.5" />
@@ -119,10 +119,15 @@ export function CourseEditor({ courseId, basePath }: CourseEditorProps) {
             {isTogglingStatus && <Loader2 className="h-3 w-3 animate-spin" />}
             {course.status === "PUBLISHED" ? "Despublicar" : "Publicar"}
           </Button>
-          <Button variant="destructive" size="sm" disabled={isDeleting} onClick={handleDelete}>
+          <ConfirmButton
+            disabled={isDeleting}
+            onConfirm={() => void handleDelete()}
+            confirmLabel="Confirmar?"
+            className="inline-flex h-8 items-center justify-center gap-1 rounded-md bg-destructive px-3 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50"
+          >
             {isDeleting && <Loader2 className="h-3 w-3 animate-spin" />}
             Eliminar
-          </Button>
+          </ConfirmButton>
         </div>
       </div>
 
@@ -378,7 +383,6 @@ function ModuleCard({
   }
 
   async function handleDelete() {
-    if (!window.confirm(`Eliminar o módulo "${courseModule.title}" e todas as suas aulas?`)) return;
     setIsBusy(true);
     try {
       onCourseChange(await coursesService.removeModule(courseId, courseModule.id));
@@ -432,9 +436,16 @@ function ModuleCard({
           onBlur={handleTitleBlur}
           className="h-9 font-medium"
         />
-        <Button variant="ghost" size="sm" disabled={isBusy} onClick={handleDelete} aria-label="Eliminar módulo">
+        <ConfirmButton
+          disabled={isBusy}
+          onConfirm={() => void handleDelete()}
+          confirmLabel="Eliminar módulo?"
+          aria-label="Eliminar módulo"
+          className="inline-flex h-8 items-center justify-center gap-1 rounded-md px-2 text-sm transition-colors hover:bg-secondary disabled:pointer-events-none disabled:opacity-50"
+          armedClassName="bg-destructive/10 text-destructive"
+        >
           <Trash2 className="h-4 w-4 text-destructive" />
-        </Button>
+        </ConfirmButton>
       </div>
 
       <div className="mt-3 space-y-2 pl-6">
@@ -553,7 +564,6 @@ function LessonRow({
   }
 
   async function handleDelete() {
-    if (!window.confirm(`Eliminar a aula "${lesson.title}"?`)) return;
     setIsBusy(true);
     try {
       onCourseChange(await coursesService.removeLesson(courseId, moduleId, lesson.id));
@@ -593,7 +603,6 @@ function LessonRow({
   }
 
   async function handleRemoveVideo() {
-    if (!window.confirm("Remover o vídeo desta aula?")) return;
     setIsUploadingVideo(true);
     try {
       onCourseChange(await coursesService.removeLessonVideo(courseId, moduleId, lesson.id));
@@ -654,19 +663,20 @@ function LessonRow({
             <Film className="h-3 w-3" />
             Vídeo
           </Badge>
-          <Button
-            variant="ghost"
-            size="sm"
+          <ConfirmButton
             disabled={isUploadingVideo}
-            onClick={handleRemoveVideo}
+            onConfirm={() => void handleRemoveVideo()}
+            confirmLabel="Remover vídeo?"
             aria-label="Remover vídeo"
+            className="inline-flex h-8 items-center justify-center gap-1 rounded-md px-2 text-sm transition-colors hover:bg-secondary disabled:pointer-events-none disabled:opacity-50"
+            armedClassName="bg-destructive/10 text-destructive"
           >
             {isUploadingVideo ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <X className="h-3.5 w-3.5 text-destructive" />
             )}
-          </Button>
+          </ConfirmButton>
         </div>
       ) : (
         <Button
@@ -685,9 +695,16 @@ function LessonRow({
         </Button>
       )}
 
-      <Button variant="ghost" size="sm" disabled={isBusy} onClick={handleDelete} aria-label="Eliminar aula">
+      <ConfirmButton
+        disabled={isBusy}
+        onConfirm={() => void handleDelete()}
+        confirmLabel="Eliminar aula?"
+        aria-label="Eliminar aula"
+        className="inline-flex h-8 items-center justify-center gap-1 rounded-md px-2 text-sm transition-colors hover:bg-secondary disabled:pointer-events-none disabled:opacity-50"
+        armedClassName="bg-destructive/10 text-destructive"
+      >
         <Trash2 className="h-3.5 w-3.5 text-destructive" />
-      </Button>
+      </ConfirmButton>
     </div>
   );
 }
