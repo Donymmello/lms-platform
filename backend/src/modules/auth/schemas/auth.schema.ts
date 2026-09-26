@@ -33,6 +33,21 @@ export const resetPasswordSchema = z.object({
   password: passwordRules,
 });
 
+/** Six digits from the app, or a recovery code — the service tells them apart. */
+const codeField = z.string().trim().min(6, "Enter the code from your authenticator app").max(20);
+
+export const twoFactorCodeSchema = z.object({ code: codeField });
+
+export const twoFactorVerifySchema = z.object({
+  challengeToken: z.string().min(1, "Missing sign-in challenge"),
+  code: codeField,
+});
+
+export const twoFactorDisableSchema = z.object({
+  password: z.string().min(1, "Password is required"),
+  code: codeField,
+});
+
 export const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email("Invalid email address"),
   password: z.string().min(1, "Password is required"),
@@ -40,5 +55,8 @@ export const loginSchema = z.object({
 
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+export type TwoFactorCodeInput = z.infer<typeof twoFactorCodeSchema>;
+export type TwoFactorVerifyInput = z.infer<typeof twoFactorVerifySchema>;
+export type TwoFactorDisableInput = z.infer<typeof twoFactorDisableSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;

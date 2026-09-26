@@ -75,6 +75,8 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
       # Defaults to the dev mail catcher. Point these at a real SMTP server
       # (Gmail, cPanel, Resend, SendGrid) to actually deliver mail.
+      # Dev-only default. Generate a fresh one for any real deployment.
+      TWO_FACTOR_ENCRYPTION_KEY: ${TWO_FACTOR_ENCRYPTION_KEY:-6465765f6f6e6c795f6b65795f6e6f745f666f725f70726f64756374696f6e21}
       SMTP_HOST: ${SMTP_HOST:-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_USER: ${SMTP_USER:-}

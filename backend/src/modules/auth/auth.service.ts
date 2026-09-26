@@ -7,18 +7,27 @@ import {
   newTokenId,
   signAccessToken,
   signRefreshToken,
+  signTwoFactorChallenge,
   verifyRefreshToken,
+  verifyTwoFactorChallenge,
 } from "../../utils/jwt";
 import { parseExpiryToMs } from "../../constants/cookies";
 import { env } from "../../config/env";
 import { notifications } from "../../notifications/notifications";
 import { authRepository } from "./auth.repository";
-import { AuthResultDto, AuthTokensDto, UserResponseDto } from "./dtos/auth.dto";
+import { twoFactorService } from "./two-factor.service";
+import {
+  AuthResultDto,
+  AuthTokensDto,
+  TwoFactorChallengeDto,
+  UserResponseDto,
+} from "./dtos/auth.dto";
 import {
   ForgotPasswordInput,
   LoginInput,
   RegisterInput,
   ResetPasswordInput,
+  TwoFactorVerifyInput,
 } from "./schemas/auth.schema";
 
 /** Short on purpose: a reset link is a bearer credential sitting in an inbox. */
@@ -116,7 +125,7 @@ export const authService = {
     await authRepository.revokeAllRefreshTokensForUser(record.userId);
   },
 
-  async login(input: LoginInput): Promise<AuthResultDto> {
+  async login(input: LoginInput): Promise<AuthResultDto | TwoFactorChallengeDto> {
     const user = await authRepository.findByEmail(input.email);
     // Deliberately identical error/timing-shaped response for "no such user"
     // and "wrong password" so login cannot be used to enumerate accounts.
@@ -132,6 +141,27 @@ export const authService = {
     if (!user.isActive) {
       throw new ForbiddenError("This account has been deactivated");
     }
+
+    // With a second factor the password alone buys nothing but a short-lived
+    // challenge: no session cookie is issued until the code is checked.
+    if (user.twoFactorEnabledAt) {
+      return { requiresTwoFactor: true, challengeToken: signTwoFactorChallenge(user.id) };
+    }
+
+    const tokens = await issueTokens(user);
+    return { user: toUserResponseDto(user), tokens };
+  },
+
+  /** Exchanges a challenge plus a valid code for a real session. */
+  async completeTwoFactorLogin(input: TwoFactorVerifyInput): Promise<AuthResultDto> {
+    const { sub: userId } = verifyTwoFactorChallenge(input.challengeToken);
+
+    const user = await authRepository.findById(userId);
+    if (!user || !user.isActive) {
+      throw new UnauthorizedError("Invalid sign-in attempt");
+    }
+
+    await twoFactorService.verifyCode(userId, input.code);
 
     const tokens = await issueTokens(user);
     return { user: toUserResponseDto(user), tokens };

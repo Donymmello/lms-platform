@@ -49,6 +49,16 @@ const envSchema = z.object({
   PAYPAL_CURRENCY: z.string().default("USD"),
   PAYPAL_MZN_PER_USD_RATE: z.coerce.number().positive().default(64),
 
+  // --- Two-factor authentication ---
+  // 32 bytes of hex. Encrypts the TOTP secrets at rest so a stolen database
+  // dump cannot be used to mint login codes. Empty disables enrolment: the
+  // app still boots and anyone who already has 2FA keeps working, but nobody
+  // new can turn it on. Generate one with:
+  //   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  TWO_FACTOR_ENCRYPTION_KEY: z.string().default(""),
+  /// Shown as the account name in the authenticator app.
+  TWO_FACTOR_ISSUER: z.string().default("Estudio"),
+
   // --- Outgoing email (SMTP) ---
   // Plain SMTP rather than one vendor's SDK, so the same code works with a
   // mail catcher in dev and with Gmail, cPanel, Resend or SendGrid in

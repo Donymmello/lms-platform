@@ -3,11 +3,15 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import { UnauthorizedError } from "../../errors";
 import { REFRESH_TOKEN_COOKIE, clearAuthCookies, setAuthCookies } from "../../constants/cookies";
 import { authService } from "./auth.service";
+import { twoFactorService } from "./two-factor.service";
 import {
   ForgotPasswordInput,
   LoginInput,
   RegisterInput,
   ResetPasswordInput,
+  TwoFactorCodeInput,
+  TwoFactorDisableInput,
+  TwoFactorVerifyInput,
 } from "./schemas/auth.schema";
 
 export const authController = {
@@ -39,10 +43,46 @@ export const authController = {
   ),
 
   login: asyncHandler(async (req: Request<unknown, unknown, LoginInput>, res: Response) => {
-    const { user, tokens } = await authService.login(req.body);
-    setAuthCookies(res, tokens);
-    res.status(200).json({ status: "success", data: { user } });
+    const result = await authService.login(req.body);
+
+    // A challenge is not a session: no cookies are set, and the client is
+    // told to collect a code.
+    if ("requiresTwoFactor" in result) {
+      res.status(200).json({ status: "success", data: result });
+      return;
+    }
+
+    setAuthCookies(res, result.tokens);
+    res.status(200).json({ status: "success", data: { user: result.user } });
   }),
+
+  verifyTwoFactor: asyncHandler(
+    async (req: Request<unknown, unknown, TwoFactorVerifyInput>, res: Response) => {
+      const { user, tokens } = await authService.completeTwoFactorLogin(req.body);
+      setAuthCookies(res, tokens);
+      res.status(200).json({ status: "success", data: { user } });
+    }
+  ),
+
+  beginTwoFactorEnrolment: asyncHandler(async (req: Request, res: Response) => {
+    const setup = await twoFactorService.beginEnrolment(req.user!.id);
+    res.status(200).json({ status: "success", data: setup });
+  }),
+
+  confirmTwoFactorEnrolment: asyncHandler(
+    async (req: Request<unknown, unknown, TwoFactorCodeInput>, res: Response) => {
+      const recoveryCodes = await twoFactorService.confirmEnrolment(req.user!.id, req.body.code);
+      // Shown once — only their hashes are stored.
+      res.status(200).json({ status: "success", data: { recoveryCodes } });
+    }
+  ),
+
+  disableTwoFactor: asyncHandler(
+    async (req: Request<unknown, unknown, TwoFactorDisableInput>, res: Response) => {
+      await twoFactorService.disable(req.user!.id, req.body.password, req.body.code);
+      res.status(200).json({ status: "success", data: null });
+    }
+  ),
 
   refresh: asyncHandler(async (req: Request, res: Response) => {
     const rawRefreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE] as string | undefined;

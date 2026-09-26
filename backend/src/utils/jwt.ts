@@ -9,6 +9,15 @@ export interface AccessTokenPayload {
   role: Role;
 }
 
+/**
+ * Issued after the password check but before the second factor. Carries a
+ * `purpose` so it can never be mistaken for a session — see verifyAccessToken.
+ */
+export interface TwoFactorChallengePayload {
+  sub: string;
+  purpose: "two_factor";
+}
+
 export interface RefreshTokenPayload {
   sub: string; // user id
   jti: string; // token id, used to look up its hash in the database
@@ -22,8 +31,23 @@ export function signAccessToken(payload: AccessTokenPayload): string {
 
 export function verifyAccessToken(token: string): AccessTokenPayload {
   try {
-    return jwt.verify(token, env.JWT_ACCESS_SECRET) as AccessTokenPayload;
+    const payload = jwt.verify(token, env.JWT_ACCESS_SECRET) as AccessTokenPayload & {
+      purpose?: string;
+    };
+
+    // Single-purpose tokens (currently the two-factor challenge) are signed
+    // with the same secret, so without this check one could be presented as a
+    // session cookie and would authenticate — skipping the second factor
+    // entirely. A session token never carries `purpose`.
+    if (payload.purpose) {
+      throw new UnauthorizedError("Invalid access token");
+    }
+
+    return payload;
   } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      throw error;
+    }
     if (error instanceof TokenExpiredError) {
       throw new UnauthorizedError("Access token expired");
     }
@@ -32,6 +56,35 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
     }
     throw error;
   }
+}
+
+/** Valid for minutes, not hours: it only has to survive typing a six-digit code. */
+export function signTwoFactorChallenge(userId: string): string {
+  return jwt.sign({ sub: userId, purpose: "two_factor" }, env.JWT_ACCESS_SECRET, {
+    expiresIn: "5m",
+  });
+}
+
+export function verifyTwoFactorChallenge(token: string): TwoFactorChallengePayload {
+  let payload: TwoFactorChallengePayload;
+  try {
+    payload = jwt.verify(token, env.JWT_ACCESS_SECRET) as TwoFactorChallengePayload;
+  } catch (error) {
+    if (error instanceof TokenExpiredError) {
+      throw new UnauthorizedError("This sign-in attempt has expired. Start again.");
+    }
+    if (error instanceof JsonWebTokenError) {
+      throw new UnauthorizedError("Invalid sign-in attempt");
+    }
+    throw error;
+  }
+
+  // A session token must not be accepted here either: the two have to stay
+  // strictly separate in both directions.
+  if (payload.purpose !== "two_factor") {
+    throw new UnauthorizedError("Invalid sign-in attempt");
+  }
+  return payload;
 }
 
 export function signRefreshToken(payload: RefreshTokenPayload): string {

@@ -63,6 +63,25 @@ Com `SMTP_HOST` vazio o envio fica desligado e a aplicação corre à mesma — 
 
 Enviar nunca faz falhar o pedido que o originou: um servidor de email em baixo não transforma um registo ou um pagamento concluído num erro.
 
+## Verificação em dois passos
+
+TOTP (o que o Google Authenticator e o Authy usam). O utilizador liga em `/seguranca`: lê o QR code, confirma com um código, e recebe 8 códigos de recuperação mostrados **uma única vez**.
+
+O segredo TOTP é guardado cifrado (AES-256-GCM) com uma chave que vive no ambiente, nunca na base de dados:
+
+```
+TWO_FACTOR_ENCRYPTION_KEY=<32 bytes em hex>
+TWO_FACTOR_ISSUER=Estudio
+```
+
+Gera uma chave com:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Com a chave vazia ninguém consegue ativar o 2FA, mas quem já o tem continua a entrar. O compose traz uma chave de desenvolvimento — **gera outra para qualquer implantação real**.
+
 ## Testes
 
 Os testes do backend correm contra uma base de dados Postgres real e dedicada (`lms_db_test`), não contra mocks do Prisma — as regras que interessam (acesso ao vídeo, RBAC, ownership, idempotência de webhooks, agregações) vivem em queries, e mockar o ORM não as testaria.

@@ -36,6 +36,7 @@ const TABLES = [
   "lessons",
   "course_modules",
   "courses",
+  "two_factor_recovery_codes",
   "password_reset_tokens",
   "refresh_tokens",
   "users",

@@ -70,6 +70,47 @@ export const authRepository = {
     return prisma.user.update({ where: { id: userId }, data: { password: passwordHash } });
   },
 
+  setTwoFactorSecret(userId: string, sealedSecret: string) {
+    return prisma.user.update({ where: { id: userId }, data: { twoFactorSecret: sealedSecret } });
+  },
+
+  enableTwoFactor(userId: string) {
+    return prisma.user.update({ where: { id: userId }, data: { twoFactorEnabledAt: new Date() } });
+  },
+
+  /** Clears the secret as well as the flag, so re-enabling always starts from a fresh device pairing. */
+  disableTwoFactor(userId: string) {
+    return prisma.$transaction([
+      prisma.twoFactorRecoveryCode.deleteMany({ where: { userId } }),
+      prisma.user.update({
+        where: { id: userId },
+        data: { twoFactorSecret: null, twoFactorEnabledAt: null },
+      }),
+    ]);
+  },
+
+  /** Enrolment issues a complete set; any codes from a previous set stop working. */
+  replaceRecoveryCodes(userId: string, codeHashes: string[]) {
+    return prisma.$transaction([
+      prisma.twoFactorRecoveryCode.deleteMany({ where: { userId } }),
+      prisma.twoFactorRecoveryCode.createMany({
+        data: codeHashes.map((codeHash) => ({ userId, codeHash })),
+      }),
+    ]);
+  },
+
+  findUnusedRecoveryCode(userId: string, codeHash: string) {
+    return prisma.twoFactorRecoveryCode.findFirst({ where: { userId, codeHash, usedAt: null } });
+  },
+
+  markRecoveryCodeUsed(id: string) {
+    return prisma.twoFactorRecoveryCode.update({ where: { id }, data: { usedAt: new Date() } });
+  },
+
+  countUnusedRecoveryCodes(userId: string) {
+    return prisma.twoFactorRecoveryCode.count({ where: { userId, usedAt: null } });
+  },
+
   revokeAllRefreshTokensForUser(userId: string) {
     return prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null },

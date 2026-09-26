@@ -9,6 +9,15 @@ export interface UserResponseDto {
   createdAt: Date;
 }
 
+/**
+ * Returned by login when the account has a second factor. No session is
+ * issued yet — the challenge is exchanged for one by POST /auth/two-factor/verify.
+ */
+export interface TwoFactorChallengeDto {
+  requiresTwoFactor: true;
+  challengeToken: string;
+}
+
 export interface AuthTokensDto {
   accessToken: string;
   refreshToken: string;

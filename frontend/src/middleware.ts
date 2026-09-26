@@ -8,7 +8,7 @@ const AUTH_PAGES = ["/login", "/register"];
 // Reachable signed in or out: someone already logged in may still want to
 // change a password they no longer trust.
 const PUBLIC_AUTH_PAGES = ["/forgot-password", "/reset-password"];
-const PROTECTED_PREFIXES = ["/admin", "/instructor", "/student"];
+const PROTECTED_PREFIXES = ["/admin", "/instructor", "/seguranca", "/student"];
 
 /**
  * Edge-level redirect guard. This only checks whether an auth cookie is
@@ -49,6 +49,7 @@ export const config = {
   matcher: [
     "/admin/:path*",
     "/instructor/:path*",
+    "/seguranca/:path*",
     "/student/:path*",
     "/login",
     "/register",

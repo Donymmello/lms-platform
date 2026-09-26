@@ -31,11 +31,21 @@ model User {
   /// Deactivated accounts are blocked at login/refresh (see auth.service.ts)
   /// rather than deleted, preserving their history (enrollments, purchases).
   isActive  Boolean  @default(true)
+
+  /// TOTP shared secret, encrypted at rest (see utils/secret-box.ts). Null
+  /// until the user starts enrolling a device. Encrypted rather than stored
+  /// raw because anyone holding it can mint valid codes forever, and the key
+  /// lives in the environment rather than in the database.
+  twoFactorSecret    String?
+  /// Set only once a code from the device has been verified, so a half-finished
+  /// enrolment can never lock anyone out.
+  twoFactorEnabledAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
+  recoveryCodes       TwoFactorRecoveryCode[]
   coursesTaught   Course[]
   enrollments     Enrollment[]
   payments        Payment[]
@@ -151,6 +161,21 @@ model LessonProgress {
   @@unique([userId, lessonId])
   @@index([lessonId])
   @@map("lesson_progress")
+}
+
+/// One-shot codes for getting back in when the authenticator device is gone.
+/// Stored as hashes for the same reason password reset tokens are: the plain
+/// values are shown to the user once, at enrolment, and never again.
+model TwoFactorRecoveryCode {
+  id        String    @id @default(uuid())
+  codeHash  String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("two_factor_recovery_codes")
 }
 
 /// A single-use ticket for setting a new password without being signed in.

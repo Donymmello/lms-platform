@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { homePathForRole } from "@/lib/routes";
+import { User } from "@/types/auth";
 import { ApiError } from "@/services/api-client";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/store/auth.store";
@@ -22,26 +23,104 @@ export function LoginForm() {
   const setUser = useAuthStore((state) => state.setUser);
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  /** Non-null once the password has been accepted and a code is owed. */
+  const [challengeToken, setChallengeToken] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  async function handleVerify(event: React.FormEvent) {
+    event.preventDefault();
+    if (!challengeToken) return;
+
+    setFormError(null);
+    setIsVerifying(true);
+    try {
+      goHome(await authService.verifyTwoFactor(challengeToken, code));
+    } catch (error) {
+      setIsVerifying(false);
+      setFormError(error instanceof ApiError ? error.message : "Código inválido. Tenta novamente.");
+    }
+  }
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
   });
 
+  function goHome(user: User) {
+    setUser(user);
+    router.push(homePathForRole(user.role));
+    router.refresh();
+  }
+
   async function onSubmit(values: LoginFormValues) {
     setFormError(null);
     try {
-      const user = await authService.login(values);
-      setUser(user);
+      const result = await authService.login(values);
 
-      const destination = homePathForRole(user.role);
-      router.push(destination);
-      router.refresh();
+      // The password was right but no session exists yet: the account has a
+      // second factor and the code decides.
+      if ("requiresTwoFactor" in result) {
+        setChallengeToken(result.challengeToken);
+        return;
+      }
+
+      goHome(result.user);
     } catch (error) {
       setFormError(
         error instanceof ApiError ? error.message : "Não foi possível entrar. Tenta novamente."
       );
     }
+  }
+
+  if (challengeToken) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Verificação em dois passos</CardTitle>
+          <CardDescription>
+            Escreve o código de 6 dígitos da tua aplicação de autenticação, ou um dos códigos de
+            recuperação.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleVerify} className="space-y-4" noValidate>
+            <Input
+              autoFocus
+              inputMode="text"
+              autoComplete="one-time-code"
+              placeholder="123456"
+              className="text-center text-lg tracking-[0.3em]"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+            />
+
+            {formError && (
+              <p role="alert" className="text-sm font-medium text-destructive">
+                {formError}
+              </p>
+            )}
+
+            <Button type="submit" className="w-full" disabled={isVerifying}>
+              {isVerifying && <Loader2 className="h-4 w-4 animate-spin" />}
+              Confirmar
+            </Button>
+          </form>
+
+          <button
+            type="button"
+            onClick={() => {
+              setChallengeToken(null);
+              setCode("");
+              setFormError(null);
+            }}
+            className="mt-6 w-full text-center text-sm text-muted-foreground hover:text-foreground"
+          >
+            Voltar atrás
+          </button>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
