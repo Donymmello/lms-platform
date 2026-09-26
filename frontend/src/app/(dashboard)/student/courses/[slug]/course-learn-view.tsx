@@ -130,9 +130,15 @@ export function CourseLearnView({ slug }: CourseLearnViewProps) {
         } else if (err instanceof ApiError && err.statusCode === 404) {
           setPlayback({ status: "no-video" });
         } else {
+          // A 5xx is the server's problem, not the learner's: its message
+          // describes internal configuration and must not be shown to them.
+          const isServerFault = err instanceof ApiError && err.statusCode >= 500;
           setPlayback({
             status: "error",
-            message: err instanceof ApiError ? err.message : "Não foi possível carregar o vídeo.",
+            message:
+              err instanceof ApiError && !isServerFault
+                ? err.message
+                : "O vídeo está indisponível de momento. Tenta mais tarde.",
           });
         }
       });

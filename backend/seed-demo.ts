@@ -5,14 +5,23 @@
  *   docker exec lms_backend npx ts-node --transpile-only seed-demo.ts
  *   docker exec lms_backend npx ts-node --transpile-only seed-demo.ts --clean
  */
+import crypto from "node:crypto";
 import { CourseStatus } from "@prisma/client";
 import { prisma } from "./src/database/prisma";
 
 const STUDENT_EMAIL = "dony@lms.com";
 
-/** `5eed` prefix = "seed", so cleanup can target these rows precisely. */
-function id(suffix: string): string {
-  return `5eed0000-0000-4000-8000-${suffix.padStart(12, "0")}`;
+/**
+ * `5eed` prefix = "seed", so cleanup can target these rows precisely.
+ *
+ * The tail is a hash of the key rather than the key itself: these columns are
+ * text, so Postgres happily stores anything, but the API validates ids as
+ * UUIDs — a tag like "cl00" contains an `l`, which is not hex, and every
+ * request for that lesson failed validation.
+ */
+function id(key: string): string {
+  const tail = crypto.createHash("sha1").update(key).digest("hex").slice(0, 12);
+  return `5eed0000-0000-4000-8000-${tail}`;
 }
 
 const FREE_COURSE_ID = id("c3");
