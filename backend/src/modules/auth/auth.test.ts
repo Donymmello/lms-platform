@@ -14,11 +14,9 @@ function cookieNames(response: request.Response): string[] {
 }
 
 /**
- * `authRateLimiter` allows 10 requests per IP per 15 minutes and keeps its
- * counters in memory for the life of the process, so every `/auth/*` call in
- * this file shares one budget. The cases below stay under it, and the
- * deliberate 429 test is last on purpose — anything added after it would
- * start from an exhausted budget.
+ * `authRateLimiter` allows 10 requests per IP per 15 minutes. Its counters are
+ * cleared between tests by `src/test/setup.ts`, so each case below starts with
+ * a full budget and the deliberate 429 test exhausts one of its own.
  */
 describe("POST /auth/register", () => {
   it("creates a STUDENT and sets both auth cookies, never returning the password", async () => {
@@ -137,13 +135,12 @@ describe("POST /auth/logout", () => {
   });
 });
 
-// Keep last — see the note at the top of this file.
 describe("auth rate limiting", () => {
   it("returns 429 once the per-IP budget is spent", async () => {
     let lastStatus = 0;
 
-    // The budget is already partly used by the cases above; 15 attempts is
-    // comfortably past the limit of 10 without depending on the exact count.
+    // 15 attempts is comfortably past the limit of 10 without depending on
+    // the exact count.
     for (let attempt = 0; attempt < 15; attempt += 1) {
       const response = await request(app)
         .post("/api/v1/auth/login")

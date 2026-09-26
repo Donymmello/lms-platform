@@ -1,5 +1,6 @@
 import { afterAll, beforeEach } from "vitest";
 import { prisma } from "../database/prisma";
+import { resetRateLimiters } from "../middlewares/rateLimiter";
 
 /**
  * Hard guard against pointing the suite at a real database: every test
@@ -35,11 +36,13 @@ const TABLES = [
   "lessons",
   "course_modules",
   "courses",
+  "password_reset_tokens",
   "refresh_tokens",
   "users",
 ];
 
 beforeEach(async () => {
+  resetRateLimiters();
   await prisma.$transaction(
     TABLES.map((table) => prisma.$executeRawUnsafe(`DELETE FROM "${table}"`))
   );

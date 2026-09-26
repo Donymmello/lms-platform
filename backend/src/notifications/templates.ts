@@ -53,6 +53,27 @@ export function welcomeEmail(name: string): RenderedEmail {
   };
 }
 
+export function passwordResetEmail(name: string, rawToken: string): RenderedEmail {
+  const url = `${env.PUBLIC_APP_URL}/reset-password?token=${encodeURIComponent(rawToken)}`;
+  return {
+    subject: "Redefinir a tua palavra-passe",
+    html: layout(
+      "Redefinir palavra-passe",
+      paragraph(`Olá, ${name}. Recebemos um pedido para redefinir a palavra-passe da tua conta.`) +
+        paragraph("O link abaixo só funciona uma vez e expira dentro de uma hora.") +
+        paragraph(
+          "Se não foste tu a pedir, ignora este email — a tua palavra-passe atual continua a funcionar."
+        ),
+      { label: "Definir nova palavra-passe", url }
+    ),
+    text: `Olá, ${name}
+
+Para redefinir a palavra-passe: ${url}
+
+O link expira dentro de uma hora e só pode ser usado uma vez. Se não foste tu a pedir, ignora este email.`,
+  };
+}
+
 export function enrollmentEmail(name: string, courseTitle: string, courseSlug: string): RenderedEmail {
   const url = `${env.PUBLIC_APP_URL}/student/courses/${courseSlug}`;
   return {

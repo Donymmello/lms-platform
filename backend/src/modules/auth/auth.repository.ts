@@ -49,6 +49,27 @@ export const authRepository = {
     });
   },
 
+  createPasswordResetToken(params: { tokenHash: string; userId: string; expiresAt: Date }) {
+    return prisma.passwordResetToken.create({ data: params });
+  },
+
+  findPasswordResetTokenByHash(tokenHash: string) {
+    return prisma.passwordResetToken.findUnique({ where: { tokenHash }, include: { user: true } });
+  },
+
+  markPasswordResetTokenUsed(id: string) {
+    return prisma.passwordResetToken.update({ where: { id }, data: { usedAt: new Date() } });
+  },
+
+  /** Requesting a new link must retire any earlier one, so only the newest email works. */
+  deleteUnusedPasswordResetTokensForUser(userId: string) {
+    return prisma.passwordResetToken.deleteMany({ where: { userId, usedAt: null } });
+  },
+
+  updatePassword(userId: string, passwordHash: string) {
+    return prisma.user.update({ where: { id: userId }, data: { password: passwordHash } });
+  },
+
   revokeAllRefreshTokensForUser(userId: string) {
     return prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null },

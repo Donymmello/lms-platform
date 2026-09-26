@@ -5,6 +5,9 @@ const ACCESS_TOKEN_COOKIE = "access_token";
 const REFRESH_TOKEN_COOKIE = "refresh_token";
 
 const AUTH_PAGES = ["/login", "/register"];
+// Reachable signed in or out: someone already logged in may still want to
+// change a password they no longer trust.
+const PUBLIC_AUTH_PAGES = ["/forgot-password", "/reset-password"];
 const PROTECTED_PREFIXES = ["/admin", "/instructor", "/student"];
 
 /**
@@ -31,6 +34,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  if (PUBLIC_AUTH_PAGES.includes(pathname)) {
+    return NextResponse.next();
+  }
+
   if (isAuthPage && hasSession) {
     return NextResponse.redirect(new URL("/", request.url));
   }
@@ -39,5 +46,13 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/instructor/:path*", "/student/:path*", "/login", "/register"],
+  matcher: [
+    "/admin/:path*",
+    "/instructor/:path*",
+    "/student/:path*",
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/reset-password",
+  ],
 };

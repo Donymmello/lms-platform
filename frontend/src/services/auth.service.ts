@@ -15,6 +15,21 @@ export const authService = {
     return res.data.user;
   },
 
+  /** Always resolves, whether or not the address has an account — the backend deliberately does not say. */
+  async forgotPassword(email: string): Promise<void> {
+    await apiFetch<ApiSuccessResponse<{ message: string }>>("/auth/forgot-password", {
+      method: "POST",
+      body: { email },
+    });
+  },
+
+  async resetPassword(token: string, password: string): Promise<void> {
+    await apiFetch<ApiSuccessResponse<null>>("/auth/reset-password", {
+      method: "POST",
+      body: { token, password },
+    });
+  },
+
   async logout(): Promise<void> {
     await apiFetch<ApiSuccessResponse<null>>("/auth/logout", { method: "POST" });
   },

@@ -44,7 +44,7 @@ Correr sem `--clean` limpa e volta a semear, por isso não duplica. O aluno e os
 
 ## Emails
 
-O backend envia três notificações: boas-vindas no registo, confirmação de inscrição gratuita, e recibo quando um pagamento é confirmado.
+O backend envia quatro notificações: boas-vindas no registo, confirmação de inscrição gratuita, recibo quando um pagamento é confirmado, e o link de recuperação de palavra-passe.
 
 Em desenvolvimento nada sai da máquina — o compose inclui um **Mailpit** que apanha tudo e mostra em http://localhost:8025.
 

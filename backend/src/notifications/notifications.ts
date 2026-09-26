@@ -1,5 +1,10 @@
 import { mailer } from "../integrations/mailer";
-import { enrollmentEmail, paymentReceiptEmail, welcomeEmail } from "./templates";
+import {
+  enrollmentEmail,
+  passwordResetEmail,
+  paymentReceiptEmail,
+  welcomeEmail,
+} from "./templates";
 
 /**
  * Every function here is fire-and-forget: it returns void, not a promise, and
@@ -25,6 +30,16 @@ function dispatch(promise: Promise<unknown>): void {
 export const notifications = {
   userRegistered(user: { name: string; email: string }): void {
     dispatch(mailer.send({ to: user.email, ...welcomeEmail(user.name) }));
+  },
+
+  /**
+   * Unlike the others this is not a courtesy: without the email the user
+   * cannot finish the reset. It still cannot be awaited by the caller,
+   * because doing so would make the endpoint's response time reveal whether
+   * the address exists.
+   */
+  passwordReset(user: { name: string; email: string }, rawToken: string): void {
+    dispatch(mailer.send({ to: user.email, ...passwordResetEmail(user.name, rawToken) }));
   },
 
   enrolled(user: { name: string; email: string }, course: { title: string; slug: string }): void {

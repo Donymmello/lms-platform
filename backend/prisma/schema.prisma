@@ -34,7 +34,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  refreshTokens   RefreshToken[]
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
   coursesTaught   Course[]
   enrollments     Enrollment[]
   payments        Payment[]
@@ -150,6 +151,26 @@ model LessonProgress {
   @@unique([userId, lessonId])
   @@index([lessonId])
   @@map("lesson_progress")
+}
+
+/// A single-use ticket for setting a new password without being signed in.
+///
+/// Only the SHA-256 hash is stored, exactly like RefreshToken: the raw token
+/// exists only in the email that was sent, so a leaked database dump cannot
+/// be used to take over accounts. `usedAt` makes it single-use and
+/// `expiresAt` keeps the window short — both are checked on redemption, and
+/// requesting a new token invalidates any earlier unused one.
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 /// A scheduled live class for a course. The platform does not host the call:
