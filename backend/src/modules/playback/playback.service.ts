@@ -2,6 +2,8 @@ import { CourseStatus, Role } from "@prisma/client";
 import { ForbiddenError, NotFoundError } from "../../errors";
 import { AuthenticatedUser } from "../../@types/express";
 import { bunnyStream } from "../../integrations/bunny-stream";
+import { isLocalVideoId } from "../../integrations/local-video-storage";
+import { env } from "../../config/env";
 import { enrollmentsRepository } from "../enrollments/enrollments.repository";
 import { progressRepository } from "../progress/progress.repository";
 import { LessonWithCourseContext, playbackRepository } from "./playback.repository";
@@ -26,11 +28,24 @@ async function resolveAccess(
   return Boolean(enrollment);
 }
 
+/**
+ * Two shapes, because the two providers are played back differently: Bunny
+ * hands back a signed URL for an <iframe>, while a locally stored file is
+ * streamed by this server and belongs in a <video>. The client is told which
+ * rather than having to guess from the URL.
+ */
+export interface PlaybackSource {
+  kind: "embed" | "file";
+  url: string;
+  /** Only meaningful for `embed`: a signed Bunny URL stops working after this. */
+  expiresAt: Date | null;
+}
+
 export const playbackService = {
   async getSignedUrl(
     lessonId: string,
     actingUser: AuthenticatedUser | undefined
-  ): Promise<{ embedUrl: string; expiresAt: Date }> {
+  ): Promise<PlaybackSource> {
     const lesson = await playbackRepository.findLessonWithCourse(lessonId);
 
     // A DRAFT course's lessons aren't watchable by anyone — treat both
@@ -57,7 +72,46 @@ export const playbackService = {
       });
     }
 
-    return bunnyStream.getSignedEmbedUrl(lesson.bunnyVideoId);
+    // A locally stored video is served by this process, so there is no signed
+    // URL to hand out — the stream route re-checks the same access rule on
+    // every request, which is a stronger guarantee than a URL that stays valid
+    // for an hour once issued.
+    if (isLocalVideoId(lesson.bunnyVideoId)) {
+      return {
+        kind: "file",
+        url: `${env.PUBLIC_API_URL}/api/v1/lessons/${lesson.id}/stream`,
+        expiresAt: null,
+      };
+    }
+
+    const signed = bunnyStream.getSignedEmbedUrl(lesson.bunnyVideoId);
+    return { kind: "embed", url: signed.embedUrl, expiresAt: signed.expiresAt };
+  },
+
+  /**
+   * Resolves a lesson to a local file, enforcing exactly the same access rule
+   * as getSignedUrl. Kept beside it deliberately: the two must never drift,
+   * or the stream route becomes a way around the paywall.
+   */
+  async getLocalFile(
+    lessonId: string,
+    actingUser: AuthenticatedUser | undefined
+  ): Promise<{ videoId: string }> {
+    const lesson = await playbackRepository.findLessonWithCourse(lessonId);
+
+    if (!lesson || lesson.course.status !== CourseStatus.PUBLISHED) {
+      throw new NotFoundError("Lesson not found");
+    }
+    if (!lesson.bunnyVideoId || !isLocalVideoId(lesson.bunnyVideoId)) {
+      throw new NotFoundError("This lesson doesn't have a locally stored video");
+    }
+
+    const canWatch = await resolveAccess(lesson, actingUser);
+    if (!canWatch) {
+      throw new ForbiddenError("You need to be enrolled in this course to watch this lesson");
+    }
+
+    return { videoId: lesson.bunnyVideoId };
   },
 };
 

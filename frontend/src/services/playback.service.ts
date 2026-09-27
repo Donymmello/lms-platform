@@ -4,7 +4,7 @@ import { SignedPlayback } from "@/types/playback";
 
 export const playbackService = {
   /**
-   * Requests a freshly-signed embed URL for a lesson. The backend decides
+   * Asks where a lesson's video can be played from. The backend decides
    * access on every call (free preview / owner / enrolled) — a 403 here
    * means "not enrolled", a 404 means "no video yet" or the lesson/course
    * doesn't exist, both of which the caller handles explicitly.

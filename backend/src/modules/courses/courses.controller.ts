@@ -102,6 +102,7 @@ export const coursesController = {
       req.params.moduleId,
       req.params.lessonId,
       req.file.path,
+      req.file.originalname,
       req.user!
     );
     res.status(200).json({ status: "success", data: { course } });

@@ -2,6 +2,8 @@ import fs from "node:fs/promises";
 import { NotFoundError } from "../../errors";
 import { AuthenticatedUser } from "../../@types/express";
 import { bunnyStream } from "../../integrations/bunny-stream";
+import { isLocalVideoId, localVideoStorage } from "../../integrations/local-video-storage";
+import { isBunnyConfigured } from "../../integrations/video-provider";
 import { assertCanManage, requireCourse, requireCourseWithContent, toDetailDto } from "./courses.service";
 import { requireModuleInCourse } from "./course-modules.service";
 import { CourseDetailDto } from "./dtos/course.dto";
@@ -81,6 +83,7 @@ export const lessonsService = {
     moduleId: string,
     lessonId: string,
     filePath: string,
+    originalName: string,
     actingUser: AuthenticatedUser
   ): Promise<CourseDetailDto> {
     const course = await requireCourse(courseId);
@@ -89,12 +92,18 @@ export const lessonsService = {
     const lesson = await requireLessonInModule(moduleId, lessonId);
 
     try {
-      if (lesson.bunnyVideoId) {
-        await bunnyStream.deleteVideo(lesson.bunnyVideoId);
+      await removeStoredVideo(lesson.bunnyVideoId);
+
+      // Whichever provider is configured now; a library can hold videos from
+      // both, because each id says where it lives.
+      let videoId: string;
+      if (isBunnyConfigured()) {
+        videoId = await bunnyStream.createVideo(lesson.title);
+        await bunnyStream.uploadVideoFile(videoId, filePath);
+      } else {
+        videoId = await localVideoStorage.store(filePath, originalName);
       }
 
-      const videoId = await bunnyStream.createVideo(lesson.title);
-      await bunnyStream.uploadVideoFile(videoId, filePath);
       await lessonsRepository.setVideo(lessonId, videoId);
     } finally {
       await fs.unlink(filePath).catch(() => {
@@ -117,12 +126,22 @@ export const lessonsService = {
     const lesson = await requireLessonInModule(moduleId, lessonId);
 
     if (lesson.bunnyVideoId) {
-      await bunnyStream.deleteVideo(lesson.bunnyVideoId);
+      await removeStoredVideo(lesson.bunnyVideoId);
       await lessonsRepository.setVideo(lessonId, null);
     }
 
     return toDetailDto(await requireCourseWithContent(courseId));
   },
 };
+
+/** Deletes wherever the video actually lives, which the id itself records. */
+async function removeStoredVideo(videoId: string | null): Promise<void> {
+  if (!videoId) return;
+  if (isLocalVideoId(videoId)) {
+    await localVideoStorage.remove(videoId);
+  } else {
+    await bunnyStream.deleteVideo(videoId);
+  }
+}
 
 export { requireLessonInModule };

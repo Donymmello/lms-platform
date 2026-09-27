@@ -42,6 +42,35 @@ docker exec lms_backend npm run seed:demo -- --clean
 
 Correr sem `--clean` limpa e volta a semear, por isso não duplica. O aluno e os cursos que espera encontrar estão no topo de `backend/seed-demo.ts`.
 
+## Vídeos das aulas
+
+Dois fornecedores. O Bunny é usado **se estiver configurado**; caso contrário os vídeos ficam no disco do próprio servidor e são servidos por ele.
+
+Sem configurar nada, o upload e a reprodução funcionam — é assim que se desenvolve e se demonstra a plataforma antes de haver CDN pago.
+
+| | Local (por omissão) | Bunny Stream |
+|---|---|---|
+| Configuração | nenhuma | 3 variáveis |
+| Formatos | mp4, webm, ogg, mov, m4v | qualquer um |
+| Transcodificação | não | sim |
+| Qualidade adaptativa | não | sim |
+| CDN | não, sai tudo do teu servidor | sim |
+| Controlo de acesso | verificado a cada pedido | URL assinado, validade de 1 hora |
+
+Para passar ao Bunny, basta preencher as três variáveis e reiniciar — sem mudar código:
+
+```
+BUNNY_STREAM_LIBRARY_ID=...
+BUNNY_STREAM_API_KEY=...
+BUNNY_STREAM_TOKEN_AUTH_KEY=...
+```
+
+A `TOKEN_AUTH_KEY` está nas definições de segurança da biblioteca e **não é** a chave da API — são diferentes.
+
+Os vídeos já carregados localmente continuam a funcionar depois da mudança: o id de cada um diz onde vive.
+
+Limite de 500 MB por ficheiro, verificado no browser e no servidor. Em desenvolvimento os ficheiros ficam num volume (`backend_uploads`), por isso sobrevivem a recriar o container — mas correr `docker compose up -d` é preciso uma vez para o volume ser ligado.
+
 ## Emails
 
 O backend envia quatro notificações: boas-vindas no registo, confirmação de inscrição gratuita, recibo quando um pagamento é confirmado, e o link de recuperação de palavra-passe.

@@ -107,6 +107,9 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
+      # Lesson videos when Bunny is not configured. Named so they survive the
+      # container being recreated.
+      - backend_uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -138,3 +141,4 @@ services:
 
 volumes:
   postgres_data:
+  backend_uploads:

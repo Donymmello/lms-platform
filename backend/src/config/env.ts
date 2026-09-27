@@ -79,6 +79,11 @@ const envSchema = z.object({
     .transform((value) => value.trim().toLowerCase() === "true"),
   MAIL_FROM: z.string().default("Estúdio <nao-responder@localhost>"),
 
+  // --- Local video storage (fallback when Bunny is not configured) ---
+  // Where lesson videos are kept when there is no CDN. Should be a mounted
+  // volume, or every container rebuild loses the uploads.
+  LOCAL_VIDEO_DIR: z.string().default("/app/uploads/videos"),
+
   // --- Bunny Stream (video hosting + signed playback) ---
   // https://bunny.net/docs/stream/ — create a Stream library in the
   // dashboard to get the library id, API key (management API) and the

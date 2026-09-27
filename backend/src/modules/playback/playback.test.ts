@@ -19,8 +19,10 @@ describe("GET /lessons/:lessonId/playback", () => {
     const response = await request(app).get(playbackUrl(preview!.id));
 
     expect(response.status).toBe(200);
-    expect(response.body.data.embedUrl).toContain("iframe.mediadelivery.net");
-    expect(response.body.data.embedUrl).toContain("token=");
+    // Bunny is configured in the test env, so this resolves to an embed.
+    expect(response.body.data.kind).toBe("embed");
+    expect(response.body.data.url).toContain("iframe.mediadelivery.net");
+    expect(response.body.data.url).toContain("token=");
   });
 
   it("refuses an anonymous viewer on a lesson that is not a free preview", async () => {
@@ -58,7 +60,7 @@ describe("GET /lessons/:lessonId/playback", () => {
       .set("Cookie", authCookie(student));
 
     expect(response.status).toBe(200);
-    expect(response.body.data.embedUrl).toContain("token=");
+    expect(response.body.data.url).toContain("token=");
   });
 
   it("lets the owning instructor and an admin watch without enrolling", async () => {

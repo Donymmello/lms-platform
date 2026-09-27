@@ -10,6 +10,7 @@ import { playbackService } from "@/services/playback.service";
 import { progressService } from "@/services/progress.service";
 import { publicCoursesService } from "@/services/public-courses.service";
 import { CourseDetail, LessonItem } from "@/types/course";
+import { SignedPlayback } from "@/types/playback";
 import { CourseProgress } from "@/types/progress";
 
 interface CourseLearnViewProps {
@@ -18,7 +19,7 @@ interface CourseLearnViewProps {
 
 type PlaybackState =
   | { status: "loading" }
-  | { status: "ready"; embedUrl: string }
+  | { status: "ready"; source: SignedPlayback }
   | { status: "no-video" }
   | { status: "forbidden"; message: string }
   | { status: "error"; message: string };
@@ -121,7 +122,7 @@ export function CourseLearnView({ slug }: CourseLearnViewProps) {
     playbackService
       .getSignedUrl(selectedLesson.id)
       .then((result) => {
-        if (!cancelled) setPlayback({ status: "ready", embedUrl: result.embedUrl });
+        if (!cancelled) setPlayback({ status: "ready", source: result });
       })
       .catch((err) => {
         if (cancelled) return;
@@ -439,11 +440,34 @@ function VideoPlayer({ playback, courseSlug }: { playback: PlaybackState; course
     );
   }
 
+  // A Bunny video arrives as a player to embed; one stored on our own server
+  // is a plain file this browser can play directly.
+  //
+  // `crossOrigin="use-credentials"` matters: the stream route lives on the
+  // API's origin and re-checks the session on every request, so without it
+  // the request goes out anonymous and a paid lesson answers 403.
+  if (playback.source.kind === "file") {
+    return (
+      <div className="aspect-video overflow-hidden bg-black sm:rounded-b-2xl">
+        <video
+          key={playback.source.url}
+          src={playback.source.url}
+          className="h-full w-full"
+          controls
+          controlsList="nodownload"
+          crossOrigin="use-credentials"
+          playsInline
+          preload="metadata"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="aspect-video overflow-hidden bg-black sm:rounded-b-2xl">
       <iframe
-        key={playback.embedUrl}
-        src={playback.embedUrl}
+        key={playback.source.url}
+        src={playback.source.url}
         className="h-full w-full"
         allow="accelerometer; gyroscope; encrypted-media; picture-in-picture;"
         allowFullScreen
