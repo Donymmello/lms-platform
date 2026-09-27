@@ -13,6 +13,33 @@ function percentOf(completed: number, total: number): number {
   return total === 0 ? 0 : Math.round((completed / total) * 100);
 }
 
+/**
+ * Watching the last tenth of a lesson is credits, end cards and goodbyes. A
+ * student who reaches it has finished, and holding the tick back until the
+ * very last frame just means it never arrives.
+ */
+const COMPLETE_AT_RATIO = 0.9;
+
+/**
+ * The lesson has to be reachable before any progress on it can be recorded.
+ * A lesson on a DRAFT (or nonexistent) course is a plain 404, not a leak of
+ * "it exists but you can't see it"; only once it is genuinely reachable does
+ * a lack of access become a 403.
+ */
+async function requireTrackableLesson(lessonId: string, actingUser: AuthenticatedUser) {
+  const lesson = await playbackRepository.findLessonWithCourse(lessonId);
+
+  if (!lesson || lesson.course.status !== CourseStatus.PUBLISHED) {
+    throw new NotFoundError("Lesson not found");
+  }
+
+  if (!(await resolveAccess(lesson, actingUser))) {
+    throw new ForbiddenError("You need to be enrolled in this course to track progress on this lesson");
+  }
+
+  return lesson;
+}
+
 export const progressService = {
   /** Marks (or unmarks) a lesson complete for the acting user. Same access rule as watching it. */
   async toggleComplete(
@@ -20,23 +47,35 @@ export const progressService = {
     completed: boolean,
     actingUser: AuthenticatedUser
   ): Promise<{ lessonId: string; completed: boolean }> {
-    const lesson = await playbackRepository.findLessonWithCourse(lessonId);
-
-    // Same shape as playback.service.getSignedUrl: a lesson on a DRAFT (or
-    // nonexistent) course is a plain 404, not a leak of "it exists but you
-    // can't see it"; only once it's genuinely reachable does a lack of
-    // access become a 403.
-    if (!lesson || lesson.course.status !== CourseStatus.PUBLISHED) {
-      throw new NotFoundError("Lesson not found");
-    }
-
-    const canAccess = await resolveAccess(lesson, actingUser);
-    if (!canAccess) {
-      throw new ForbiddenError("You need to be enrolled in this course to track progress on this lesson");
-    }
+    await requireTrackableLesson(lessonId, actingUser);
 
     await progressRepository.setCompleted(actingUser.id, lessonId, completed);
     return { lessonId, completed };
+  },
+
+  /**
+   * Records how far the player has got, and completes the lesson once that
+   * passes the threshold — so progress reflects what was actually watched
+   * instead of whether anyone remembered to press a button.
+   *
+   * The position comes from the client because only the client knows it; the
+   * threshold is applied here so there is one rule rather than one per player.
+   * A student who inflates their own progress bar has fooled nobody but
+   * themselves, so this is not a trust boundary — but the numbers are still
+   * clamped, because a position past the end of the video is meaningless.
+   */
+  async recordPosition(
+    lessonId: string,
+    input: { positionSeconds: number; durationSeconds: number },
+    actingUser: AuthenticatedUser
+  ): Promise<{ lessonId: string; positionSeconds: number; completed: boolean }> {
+    await requireTrackableLesson(lessonId, actingUser);
+
+    const positionSeconds = Math.min(Math.round(input.positionSeconds), Math.round(input.durationSeconds));
+    const completed = positionSeconds >= input.durationSeconds * COMPLETE_AT_RATIO;
+
+    await progressRepository.savePosition(actingUser.id, lessonId, positionSeconds, completed);
+    return { lessonId, positionSeconds, completed };
   },
 
   /** Full progress breakdown for one course — the student course player's progress bar + "continue" lesson. */
@@ -56,12 +95,30 @@ export const progressService = {
     );
     const lessonIds = lessons.map((lesson: CourseWithDetailRelations["modules"][number]["lessons"][number]) => lesson.id);
 
-    const completedLessonIds = await progressRepository.findCompletedLessonIds(actingUser.id, lessonIds);
+    const rows = await progressRepository.findProgressFor(actingUser.id, lessonIds);
+    const completedLessonIds = rows.filter((row) => row.completedAt !== null).map((row) => row.lessonId);
     const completedSet = new Set(completedLessonIds);
+
+    const lessonPositions: Record<string, number> = {};
+    for (const row of rows) {
+      if (row.positionSeconds > 0) lessonPositions[row.lessonId] = row.positionSeconds;
+    }
+
+    // Where they left off beats where the curriculum says to go next: a
+    // student who skipped ahead to lesson 5 expects to land back on 5. Only
+    // unfinished lessons count, so the last thing they completed does not
+    // keep pulling them back to it.
+    const lastTouched = rows
+      .filter((row) => row.completedAt === null && lessonIds.includes(row.lessonId))
+      .sort((a, b) => b.lastAccessedAt.getTime() - a.lastAccessedAt.getTime())[0];
+
     const resumeLesson =
+      (lastTouched && lessons.find((lesson: { id: string }) => lesson.id === lastTouched.lessonId)) ??
       lessons.find(
         (lesson: CourseWithDetailRelations["modules"][number]["lessons"][number]) => !completedSet.has(lesson.id)
-      ) ?? lessons[0] ?? null;
+      ) ??
+      lessons[0] ??
+      null;
 
     return {
       courseId,
@@ -69,7 +126,9 @@ export const progressService = {
       completedLessons: completedLessonIds.length,
       percent: percentOf(completedLessonIds.length, lessonIds.length),
       completedLessonIds,
+      lessonPositions,
       resumeLessonId: resumeLesson ? resumeLesson.id : null,
+      resumePositionSeconds: resumeLesson ? lessonPositions[resumeLesson.id] ?? 0 : 0,
     };
   },
 

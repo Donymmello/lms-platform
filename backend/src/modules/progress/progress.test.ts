@@ -262,3 +262,121 @@ describe("playback side effects", () => {
     expect(await prisma.lessonProgress.count()).toBe(0);
   });
 });
+
+describe("PUT /progress/lessons/:lessonId/position", () => {
+  /** An enrolled student sitting in front of one lesson. */
+  async function watcher() {
+    const instructor = await createUser({ role: Role.INSTRUCTOR });
+    const course = await createCourse(instructor.id);
+    const lessons = await createLessons(course.id, 3);
+    const student = await createUser();
+    await enroll(student.id, course.id);
+    return { course, lessons, student };
+  }
+
+  function report(lessonId: string, student: { id: string }, body: unknown) {
+    return request(app)
+      .put(`/api/v1/progress/lessons/${lessonId}/position`)
+      .set("Cookie", authCookie(student as Parameters<typeof authCookie>[0]))
+      .send(body);
+  }
+
+  it("stores the position without completing the lesson mid-way", async () => {
+    const { lessons, student } = await watcher();
+
+    const response = await report(lessons[0]!.id, student, {
+      positionSeconds: 120,
+      durationSeconds: 600,
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.completed).toBe(false);
+    const row = await prisma.lessonProgress.findUnique({
+      where: { userId_lessonId: { userId: student.id, lessonId: lessons[0]!.id } },
+    });
+    expect(row?.positionSeconds).toBe(120);
+    expect(row?.completedAt).toBeNull();
+  });
+
+  it("completes the lesson at 90%, without waiting for the last frame", async () => {
+    const { lessons, student } = await watcher();
+
+    const response = await report(lessons[0]!.id, student, {
+      positionSeconds: 540,
+      durationSeconds: 600,
+    });
+
+    expect(response.body.data.completed).toBe(true);
+    const row = await prisma.lessonProgress.findUnique({
+      where: { userId_lessonId: { userId: student.id, lessonId: lessons[0]!.id } },
+    });
+    expect(row?.completedAt).toBeInstanceOf(Date);
+  });
+
+  it("does not un-complete a lesson the student rewinds, nor move its completion date", async () => {
+    const { lessons, student } = await watcher();
+    await report(lessons[0]!.id, student, { positionSeconds: 600, durationSeconds: 600 });
+    const first = await prisma.lessonProgress.findUnique({
+      where: { userId_lessonId: { userId: student.id, lessonId: lessons[0]!.id } },
+    });
+
+    // Watching it again from the start.
+    await report(lessons[0]!.id, student, { positionSeconds: 10, durationSeconds: 600 });
+
+    const after = await prisma.lessonProgress.findUnique({
+      where: { userId_lessonId: { userId: student.id, lessonId: lessons[0]!.id } },
+    });
+    expect(after?.positionSeconds).toBe(10);
+    expect(after?.completedAt).toEqual(first?.completedAt);
+  });
+
+  it("clamps a position that runs past the end of the video", async () => {
+    const { lessons, student } = await watcher();
+
+    const response = await report(lessons[0]!.id, student, {
+      positionSeconds: 9999,
+      durationSeconds: 600,
+    });
+
+    expect(response.body.data.positionSeconds).toBe(600);
+  });
+
+  it("rejects a duration of zero rather than dividing by it", async () => {
+    const { lessons, student } = await watcher();
+
+    const response = await report(lessons[0]!.id, student, {
+      positionSeconds: 0,
+      durationSeconds: 0,
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("REFUSES a student who is not enrolled", async () => {
+    const { lessons } = await watcher();
+    const outsider = await createUser();
+
+    const response = await report(lessons[0]!.id, outsider, {
+      positionSeconds: 10,
+      durationSeconds: 600,
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("resumes the unfinished lesson last watched, at the second it stopped", async () => {
+    const { course, lessons, student } = await watcher();
+    // Skips ahead to the third lesson and stops part-way through it.
+    await report(lessons[0]!.id, student, { positionSeconds: 600, durationSeconds: 600 });
+    await report(lessons[2]!.id, student, { positionSeconds: 75, durationSeconds: 600 });
+
+    const response = await request(app)
+      .get(`/api/v1/progress/courses/${course.id}`)
+      .set("Cookie", authCookie(student));
+
+    // Not lesson 2, which is where the curriculum order would send them.
+    expect(response.body.data.resumeLessonId).toBe(lessons[2]!.id);
+    expect(response.body.data.resumePositionSeconds).toBe(75);
+    expect(response.body.data.lessonPositions[lessons[2]!.id]).toBe(75);
+  });
+});

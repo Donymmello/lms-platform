@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, ArrowLeft, Check, Film, Loader2, Lock, Play } from "lucide-react";
 
@@ -165,6 +165,28 @@ export function CourseLearnView({ slug }: CourseLearnViewProps) {
     }
   }
 
+  /**
+   * The player reports where it got to; the server decides whether that
+   * finishes the lesson. Only a change in that answer is worth re-reading the
+   * whole course progress for — the ten-second beats in between would be a
+   * request per beat for nothing.
+   */
+  const handlePosition = useCallback(
+    async (lessonId: string, positionSeconds: number, durationSeconds: number) => {
+      if (!course) return;
+      try {
+        const { completed } = await progressService.recordPosition(lessonId, positionSeconds, durationSeconds);
+        if (completed && !progress?.completedLessonIds.includes(lessonId)) {
+          setProgress(await progressService.getCourseProgress(course.id));
+        }
+      } catch {
+        // Same reasoning as the manual toggle: losing a position report is not
+        // worth interrupting someone who is watching a lesson.
+      }
+    },
+    [course, progress]
+  );
+
   if (courseError) {
     return (
       <div className="mx-auto max-w-shelf px-6 py-12 lg:px-10">
@@ -198,7 +220,13 @@ export function CourseLearnView({ slug }: CourseLearnViewProps) {
       <div className="relative border-b border-border/60 bg-black">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
         <div className="mx-auto max-w-[78rem] px-0 sm:px-6 lg:px-10">
-          <VideoPlayer playback={playback} courseSlug={course.slug} />
+          <VideoPlayer
+            playback={playback}
+            courseSlug={course.slug}
+            lessonId={selectedLesson?.id ?? null}
+            startAt={selectedLesson ? progress?.lessonPositions[selectedLesson.id] ?? 0 : 0}
+            onPosition={handlePosition}
+          />
         </div>
       </div>
 
@@ -395,7 +423,19 @@ function ProgressDial({ percent, completed, total }: { percent: number; complete
   );
 }
 
-function VideoPlayer({ playback, courseSlug }: { playback: PlaybackState; courseSlug: string }) {
+function VideoPlayer({
+  playback,
+  courseSlug,
+  lessonId,
+  startAt,
+  onPosition,
+}: {
+  playback: PlaybackState;
+  courseSlug: string;
+  lessonId: string | null;
+  startAt: number;
+  onPosition: (lessonId: string, positionSeconds: number, durationSeconds: number) => void;
+}) {
   const shell =
     "flex aspect-video flex-col items-center justify-center gap-3 bg-[hsl(30_9%_4%)] px-6 text-center sm:rounded-b-2xl";
 
@@ -443,7 +483,18 @@ function VideoPlayer({ playback, courseSlug }: { playback: PlaybackState; course
   // A Bunny video arrives as a player to embed; one stored on our own server
   // is a plain file this browser can play directly.
   if (playback.source.kind === "file") {
-    return <LocalVideo url={playback.source.url} shell={shell} />;
+    return (
+      <LocalVideo
+        key={playback.source.url}
+        url={playback.source.url}
+        shell={shell}
+        startAt={startAt}
+        // A Bunny embed is a cross-origin iframe this page cannot read the
+        // playhead from, so auto-tracking only covers videos we serve
+        // ourselves. The manual "concluída" button stays for the rest.
+        onPosition={lessonId ? (position, duration) => onPosition(lessonId, position, duration) : undefined}
+      />
+    );
   }
 
   return (
@@ -472,8 +523,68 @@ function VideoPlayer({ playback, courseSlug }: { playback: PlaybackState; course
  * fullscreen button and no shape, which reads as a broken player rather than as
  * a bad file, so say what happened instead.
  */
-function LocalVideo({ url, shell }: { url: string; shell: string }) {
+/**
+ * `timeupdate` fires several times a second; reporting every one of them would
+ * be a request per 250ms. Ten seconds is close enough that nobody notices the
+ * lost tail, and the unmount flush below covers the rest.
+ */
+const REPORT_EVERY_SECONDS = 10;
+
+function LocalVideo({
+  url,
+  shell,
+  startAt,
+  onPosition,
+}: {
+  url: string;
+  shell: string;
+  startAt: number;
+  onPosition?: (positionSeconds: number, durationSeconds: number) => void;
+}) {
   const [hasPicture, setHasPicture] = useState(true);
+
+  // Held in a ref so the unmount flush can read the final values without the
+  // effect re-running — and re-reporting — on every render.
+  const latest = useRef({ position: 0, duration: 0, reported: 0, onPosition });
+  latest.current.onPosition = onPosition;
+
+  const flush = useCallback((position: number, duration: number) => {
+    if (duration <= 0) return;
+    latest.current.reported = position;
+    latest.current.onPosition?.(position, duration);
+  }, []);
+
+  useEffect(() => {
+    // Picking another lesson unmounts this player without firing `pause`, so
+    // without this the seconds since the last beat would be lost.
+    return () => {
+      const { position, duration, reported } = latest.current;
+      if (duration > 0 && Math.abs(position - reported) >= 1) {
+        latest.current.onPosition?.(position, duration);
+      }
+    };
+  }, []);
+
+  function handleLoadedMetadata(video: HTMLVideoElement) {
+    setHasPicture(video.videoWidth > 0);
+    latest.current.duration = video.duration;
+
+    // Resuming right at the end would drop them on the final frame with
+    // nothing left to watch; that case starts over instead.
+    if (startAt > 0 && startAt < video.duration - 5) {
+      video.currentTime = startAt;
+      latest.current.position = startAt;
+      latest.current.reported = startAt;
+    }
+  }
+
+  function handleTimeUpdate(video: HTMLVideoElement) {
+    latest.current.position = video.currentTime;
+    latest.current.duration = video.duration;
+    if (video.currentTime - latest.current.reported >= REPORT_EVERY_SECONDS) {
+      flush(video.currentTime, video.duration);
+    }
+  }
 
   if (!hasPicture) {
     return (
@@ -489,7 +600,6 @@ function LocalVideo({ url, shell }: { url: string; shell: string }) {
   return (
     <div className="aspect-video overflow-hidden bg-black sm:rounded-b-2xl">
       <video
-        key={url}
         src={url}
         // object-contain keeps a portrait or 4:3 recording in proportion inside
         // the 16:9 stage rather than stretching it to fill.
@@ -499,7 +609,10 @@ function LocalVideo({ url, shell }: { url: string; shell: string }) {
         crossOrigin="use-credentials"
         playsInline
         preload="metadata"
-        onLoadedMetadata={(event) => setHasPicture(event.currentTarget.videoWidth > 0)}
+        onLoadedMetadata={(event) => handleLoadedMetadata(event.currentTarget)}
+        onTimeUpdate={(event) => handleTimeUpdate(event.currentTarget)}
+        onPause={(event) => flush(event.currentTarget.currentTime, event.currentTarget.duration)}
+        onEnded={(event) => flush(event.currentTarget.duration, event.currentTarget.duration)}
       />
     </div>
   );

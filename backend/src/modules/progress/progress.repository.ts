@@ -1,6 +1,13 @@
 import { LessonProgress } from "@prisma/client";
 import { prisma } from "../../database/prisma";
 
+export interface ProgressRow {
+  lessonId: string;
+  completedAt: Date | null;
+  positionSeconds: number;
+  lastAccessedAt: Date;
+}
+
 export const progressRepository = {
   /**
    * Creates or bumps the (user, lesson) row's `lastAccessedAt` (the field's
@@ -24,13 +31,40 @@ export const progressRepository = {
     });
   },
 
-  async findCompletedLessonIds(userId: string, lessonIds: string[]): Promise<string[]> {
-    if (lessonIds.length === 0) return [];
-    const rows = await prisma.lessonProgress.findMany({
-      where: { userId, lessonId: { in: lessonIds }, completedAt: { not: null } },
-      select: { lessonId: true },
+  /**
+   * Stores how far into the lesson the student has watched.
+   *
+   * `completedAt` is set in a second statement, guarded on it still being
+   * null, so re-watching a finished lesson does not keep moving the date it
+   * was completed — and so a rewind never un-completes it.
+   */
+  async savePosition(
+    userId: string,
+    lessonId: string,
+    positionSeconds: number,
+    complete: boolean
+  ): Promise<void> {
+    await prisma.lessonProgress.upsert({
+      where: { userId_lessonId: { userId, lessonId } },
+      create: { userId, lessonId, positionSeconds },
+      update: { positionSeconds },
     });
-    return rows.map((row: { lessonId: string }) => row.lessonId);
+
+    if (complete) {
+      await prisma.lessonProgress.updateMany({
+        where: { userId, lessonId, completedAt: null },
+        data: { completedAt: new Date() },
+      });
+    }
+  },
+
+  /** Every progress row the user has for these lessons — completion and position in one query. */
+  findProgressFor(userId: string, lessonIds: string[]): Promise<ProgressRow[]> {
+    if (lessonIds.length === 0) return Promise.resolve([]);
+    return prisma.lessonProgress.findMany({
+      where: { userId, lessonId: { in: lessonIds } },
+      select: { lessonId: true, completedAt: true, positionSeconds: true, lastAccessedAt: true },
+    });
   },
 
   /** Completed-lesson counts per course for one user, in a single query — powers the "Os meus cursos" progress bars without N+1. */

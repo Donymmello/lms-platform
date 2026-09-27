@@ -2,7 +2,12 @@ import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate";
 import { validate } from "../../middlewares/validate";
 import { progressController } from "./progress.controller";
-import { courseIdParamSchema, lessonIdParamSchema, setLessonProgressSchema } from "./schemas/progress.schema";
+import {
+  courseIdParamSchema,
+  lessonIdParamSchema,
+  recordLessonPositionSchema,
+  setLessonProgressSchema,
+} from "./schemas/progress.schema";
 
 export const progressRouter = Router();
 
@@ -24,4 +29,14 @@ progressRouter.put(
   validate(lessonIdParamSchema, "params"),
   validate(setLessonProgressSchema, "body"),
   progressController.setLessonProgress
+);
+
+// Separate from the manual tick above because it is a different act: the
+// player reporting where it got to, many times per lesson, rather than the
+// student declaring they are done.
+progressRouter.put(
+  "/lessons/:lessonId/position",
+  validate(lessonIdParamSchema, "params"),
+  validate(recordLessonPositionSchema, "body"),
+  progressController.recordLessonPosition
 );

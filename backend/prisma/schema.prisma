@@ -142,6 +142,7 @@ model Lesson {
   @@map("lessons")
 }
 
+
 /// One row per (user, lesson) the user has ever opened. `lastAccessedAt` is
 /// touched every time a signed playback URL is issued to them (see
 /// playback.service.ts) and drives "continue where you left off";
@@ -155,6 +156,9 @@ model LessonProgress {
   lessonId       String
   lesson         Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   completedAt    DateTime?
+  /// How far into the video this student has watched, so re-opening a lesson
+  /// picks up where they stopped instead of at zero.
+  positionSeconds Int      @default(0)
   lastAccessedAt DateTime  @default(now()) @updatedAt
   createdAt      DateTime  @default(now())
 
