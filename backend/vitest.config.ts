@@ -19,6 +19,7 @@ export default defineConfig({
       DATABASE_URL: TEST_DATABASE_URL,
       TWO_FACTOR_ENCRYPTION_KEY: "0".repeat(64),
       BUNNY_STREAM_LIBRARY_ID: "12345",
+      BUNNY_STREAM_API_KEY: "test-api-key",
       BUNNY_STREAM_TOKEN_AUTH_KEY: "test-token-auth-key",
     },
     /**

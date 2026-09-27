@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
+import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
+import { Readable } from "node:stream";
 import { env } from "../config/env";
 import { AppError } from "../errors";
 
@@ -50,24 +52,36 @@ export const bunnyStream = {
   },
 
   /**
-   * Uploads the binary for a previously-created video. Reads the whole file
-   * into memory for a single PUT — fine for typical course-video sizes
-   * (the upload endpoint caps at 500MB, see middlewares/videoUpload.ts);
-   * much larger files would need Bunny's resumable (TUS) upload instead of
-   * proxying through this server.
+   * Uploads the binary for a previously-created video.
+   *
+   * Streamed from disk rather than read into a Buffer: the upload endpoint
+   * accepts files up to 500MB, and buffering meant one of those held 500MB of
+   * heap for the whole transfer — two concurrent uploads were enough to put a
+   * small server under real memory pressure.
+   *
+   * `Content-Length` is set explicitly from the file's size so this stays an
+   * ordinary sized PUT rather than becoming a chunked one. The bytes on the
+   * wire are identical to what the buffered version sent, which matters
+   * because this cannot be exercised against Bunny from a dev machine.
+   *
+   * Larger files still want Bunny's resumable (TUS) upload straight from the
+   * browser, which would also stop the file passing through this server at all.
    */
   async uploadVideoFile(videoId: string, filePath: string): Promise<void> {
     assertManagementConfigured();
 
-    const fileBuffer = await fs.readFile(filePath);
+    const { size } = await fs.stat(filePath);
     const response = await fetch(videoUrl(videoId), {
       method: "PUT",
       headers: {
         AccessKey: env.BUNNY_STREAM_API_KEY,
         "Content-Type": "application/octet-stream",
+        "Content-Length": String(size),
       },
-      body: fileBuffer,
-    });
+      body: Readable.toWeb(createReadStream(filePath)) as ReadableStream<Uint8Array>,
+      // Required by undici whenever the body is a stream.
+      duplex: "half",
+    } as RequestInit & { duplex: "half" });
 
     if (!response.ok) {
       const body = await response.text();
