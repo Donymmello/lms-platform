@@ -4,6 +4,8 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { AppError } from "../errors";
 import { env } from "../config/env";
+import { resolveInside } from "./local-storage-path";
+import { probeMedia, rejectionReason } from "./media-probe";
 
 /**
  * Keeps lesson videos on this server's own disk, for when Bunny Stream is not
@@ -39,21 +41,8 @@ export function isLocalVideoId(videoId: string): boolean {
   return videoId.startsWith(LOCAL_PREFIX);
 }
 
-/**
- * Resolves the id to a path inside the storage directory, refusing anything
- * that tries to climb out of it. The id reaches here from the database, but
- * treating it as untrusted costs one comparison and removes a whole class of
- * mistake.
- */
 function resolveStoredPath(videoId: string): string {
-  const fileName = videoId.slice(LOCAL_PREFIX.length);
-  const root = path.resolve(env.LOCAL_VIDEO_DIR);
-  const resolved = path.resolve(root, fileName);
-
-  if (resolved !== path.join(root, path.basename(resolved))) {
-    throw new AppError("Invalid video reference", 400);
-  }
-  return resolved;
+  return resolveInside(env.LOCAL_VIDEO_DIR, videoId.slice(LOCAL_PREFIX.length));
 }
 
 export function contentTypeFor(videoId: string): string {
@@ -73,6 +62,14 @@ export const localVideoStorage = {
         `Without a video CDN configured, only ${[...ALLOWED_EXTENSIONS].join(", ")} can be played back directly`,
         400
       );
+    }
+
+    // Nothing here transcodes, so the file has to be playable exactly as it
+    // arrives. The extension and MIME type are both trivially wrong — an
+    // audio-only export still calls itself video/mp4 — so look inside.
+    const problem = rejectionReason(await probeMedia(sourcePath, originalName));
+    if (problem) {
+      throw new AppError(problem, 400);
     }
 
     const root = path.resolve(env.LOCAL_VIDEO_DIR);

@@ -650,10 +650,15 @@ function LessonRow({
         Pré-visualização gratuita
       </label>
 
+      {/*
+        Narrower than video/* on purpose: without a CDN nothing transcodes, so
+        the browser has to play the file exactly as uploaded. .avi and .mkv are
+        refused by the server anyway — better not to offer them in the picker.
+      */}
       <input
         ref={fileInputRef}
         type="file"
-        accept="video/*"
+        accept=".mp4,.m4v,.mov,.webm,video/mp4,video/quicktime,video/webm"
         onChange={handleFileSelected}
         className="hidden"
       />
@@ -693,6 +698,11 @@ function LessonRow({
           )}
           Vídeo
         </Button>
+      )}
+      {!lesson.hasVideo && (
+        <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
+          MP4 (H.264) ou WebM
+        </span>
       )}
 
       <ConfirmButton

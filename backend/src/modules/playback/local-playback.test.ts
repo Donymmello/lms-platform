@@ -10,6 +10,7 @@ import { env } from "../../config/env";
 import { prisma } from "../../database/prisma";
 import { localVideoStorage } from "../../integrations/local-video-storage";
 import { authCookie, createCourse, createLessons, createUser, enroll } from "../../test/factories";
+import { buildMp4, mp4Track, playableMp4 } from "../../test/mp4";
 
 const app = createApp();
 
@@ -23,8 +24,12 @@ const originalLibrary = env.BUNNY_STREAM_LIBRARY_ID;
 const originalDir = env.LOCAL_VIDEO_DIR;
 let storageDir: string;
 
-/** Recognisable, non-repeating bytes, so a wrong range shows up immediately. */
-const PAYLOAD = Buffer.from(Array.from({ length: 2048 }, (_, i) => i % 251));
+/**
+ * A real (if tiny) MP4: uploads are inspected for a playable video track now,
+ * so a buffer of arbitrary bytes would be refused before it ever reached disk.
+ * The payload inside it is non-repeating, so a wrong range shows up immediately.
+ */
+const PAYLOAD = playableMp4(2048);
 
 beforeEach(async () => {
   storageDir = path.join(os.tmpdir(), `lms-videos-${randomUUID()}`);
@@ -118,7 +123,7 @@ describe("GET /lessons/:lessonId/stream", () => {
       .set("Range", "bytes=2000-");
 
     expect(response.status).toBe(206);
-    expect(response.headers["content-range"]).toBe(`bytes 2000-2047/${PAYLOAD.length}`);
+    expect(response.headers["content-range"]).toBe(`bytes 2000-${PAYLOAD.length - 1}/${PAYLOAD.length}`);
   });
 
   it("REFUSES a student who is not enrolled", async () => {
@@ -183,6 +188,17 @@ describe("local storage", () => {
     await fs.writeFile(sourcePath, PAYLOAD);
 
     await expect(localVideoStorage.store(sourcePath, "aula.avi")).rejects.toMatchObject({
+      statusCode: 400,
+    });
+    await fs.unlink(sourcePath).catch(() => undefined);
+  });
+
+  it("refuses an audio-only file, which is the one no extension check catches", async () => {
+    const sourcePath = path.join(os.tmpdir(), `upload-${randomUUID()}.mp4`);
+    await fs.writeFile(sourcePath, buildMp4([mp4Track("soun", "mp4a")]));
+
+    // Calls itself video/mp4, ends in .mp4, and plays sound over a blank frame.
+    await expect(localVideoStorage.store(sourcePath, "aula.mp4")).rejects.toMatchObject({
       statusCode: 400,
     });
     await fs.unlink(sourcePath).catch(() => undefined);

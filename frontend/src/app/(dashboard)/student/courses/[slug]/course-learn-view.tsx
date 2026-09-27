@@ -442,25 +442,8 @@ function VideoPlayer({ playback, courseSlug }: { playback: PlaybackState; course
 
   // A Bunny video arrives as a player to embed; one stored on our own server
   // is a plain file this browser can play directly.
-  //
-  // `crossOrigin="use-credentials"` matters: the stream route lives on the
-  // API's origin and re-checks the session on every request, so without it
-  // the request goes out anonymous and a paid lesson answers 403.
   if (playback.source.kind === "file") {
-    return (
-      <div className="aspect-video overflow-hidden bg-black sm:rounded-b-2xl">
-        <video
-          key={playback.source.url}
-          src={playback.source.url}
-          className="h-full w-full"
-          controls
-          controlsList="nodownload"
-          crossOrigin="use-credentials"
-          playsInline
-          preload="metadata"
-        />
-      </div>
-    );
+    return <LocalVideo url={playback.source.url} shell={shell} />;
   }
 
   return (
@@ -471,6 +454,52 @@ function VideoPlayer({ playback, courseSlug }: { playback: PlaybackState; course
         className="h-full w-full"
         allow="accelerometer; gyroscope; encrypted-media; picture-in-picture;"
         allowFullScreen
+      />
+    </div>
+  );
+}
+
+/**
+ * A video served from our own server, played by the browser directly.
+ *
+ * `crossOrigin="use-credentials"` matters: the stream route lives on the API's
+ * origin and re-checks the session on every request, so without it the request
+ * goes out anonymous and a paid lesson answers 403.
+ *
+ * Uploads are inspected for a real video track now, but files that predate that
+ * check — and WebM, which is never parsed — can still turn out to be sound with
+ * no picture. The browser's own answer to that is an audio control bar with no
+ * fullscreen button and no shape, which reads as a broken player rather than as
+ * a bad file, so say what happened instead.
+ */
+function LocalVideo({ url, shell }: { url: string; shell: string }) {
+  const [hasPicture, setHasPicture] = useState(true);
+
+  if (!hasPicture) {
+    return (
+      <div className={shell}>
+        <AlertCircle className="h-9 w-9 text-muted-foreground/60" />
+        <p className="max-w-sm text-sm text-muted-foreground">
+          Este ficheiro não traz imagem, apenas som. Pede ao instrutor para carregar o vídeo de novo.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="aspect-video overflow-hidden bg-black sm:rounded-b-2xl">
+      <video
+        key={url}
+        src={url}
+        // object-contain keeps a portrait or 4:3 recording in proportion inside
+        // the 16:9 stage rather than stretching it to fill.
+        className="h-full w-full object-contain"
+        controls
+        controlsList="nodownload"
+        crossOrigin="use-credentials"
+        playsInline
+        preload="metadata"
+        onLoadedMetadata={(event) => setHasPicture(event.currentTarget.videoWidth > 0)}
       />
     </div>
   );
