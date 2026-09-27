@@ -130,6 +130,34 @@ export const coursesService = {
     return courseResponse(res);
   },
 
+  async addLessonMaterial(
+    courseId: string,
+    moduleId: string,
+    lessonId: string,
+    file: File
+  ): Promise<CourseDetail> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await apiUpload<ApiSuccessResponse<{ course: CourseDetail }>>(
+      `/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/materials`,
+      formData
+    );
+    return courseResponse(res);
+  },
+
+  async removeLessonMaterial(
+    courseId: string,
+    moduleId: string,
+    lessonId: string,
+    materialId: string
+  ): Promise<CourseDetail> {
+    const res = await apiFetch<ApiSuccessResponse<{ course: CourseDetail }>>(
+      `/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/materials/${materialId}`,
+      { method: "DELETE" }
+    );
+    return courseResponse(res);
+  },
+
   async removeLessonVideo(courseId: string, moduleId: string, lessonId: string): Promise<CourseDetail> {
     const res = await apiFetch<ApiSuccessResponse<{ course: CourseDetail }>>(
       `/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/video`,

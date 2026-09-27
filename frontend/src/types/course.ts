@@ -5,6 +5,14 @@ export interface CourseInstructor {
   name: string;
 }
 
+/** A downloadable attached to a lesson. The bytes come from an access-checked route. */
+export interface LessonMaterial {
+  id: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+}
+
 export interface LessonItem {
   id: string;
   title: string;
@@ -13,6 +21,7 @@ export interface LessonItem {
   isFreePreview: boolean;
   durationSeconds: number | null;
   hasVideo: boolean;
+  materials: LessonMaterial[];
 }
 
 export interface CourseModuleItem {

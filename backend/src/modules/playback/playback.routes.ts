@@ -2,7 +2,7 @@ import { Router } from "express";
 import { optionalAuthenticate } from "../../middlewares/optionalAuthenticate";
 import { validate } from "../../middlewares/validate";
 import { playbackController } from "./playback.controller";
-import { lessonIdParamSchema } from "./schemas/playback.schema";
+import { lessonIdParamSchema, materialParamSchema } from "./schemas/playback.schema";
 
 export const playbackRouter = Router();
 
@@ -23,4 +23,13 @@ playbackRouter.get(
   validate(lessonIdParamSchema, "params"),
   optionalAuthenticate,
   playbackController.getSignedUrl
+);
+
+// Materials sit behind the same access rule as the lesson's video: a free
+// preview's are open, a paid course's are not.
+playbackRouter.get(
+  "/:lessonId/materials/:materialId",
+  validate(materialParamSchema, "params"),
+  optionalAuthenticate,
+  playbackController.downloadMaterial
 );

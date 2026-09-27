@@ -3,6 +3,7 @@ import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate";
 import { checkRole } from "../../middlewares/checkRole";
 import { validate } from "../../middlewares/validate";
+import { materialUpload } from "../../middlewares/materialUpload";
 import { videoUpload } from "../../middlewares/videoUpload";
 import { coursesController } from "./courses.controller";
 import {
@@ -13,7 +14,7 @@ import {
   updateCourseStatusSchema,
 } from "./schemas/course.schema";
 import { createModuleSchema, moduleIdParamSchema, updateModuleSchema } from "./schemas/module.schema";
-import { createLessonSchema, lessonIdParamSchema, updateLessonSchema } from "./schemas/lesson.schema";
+import { createLessonSchema, lessonIdParamSchema, materialIdParamSchema, updateLessonSchema } from "./schemas/lesson.schema";
 
 export const coursesRouter = Router();
 
@@ -86,4 +87,19 @@ coursesRouter.delete(
   "/:courseId/modules/:moduleId/lessons/:lessonId/video",
   validate(lessonIdParamSchema, "params"),
   coursesController.removeLessonVideo
+);
+
+// Materials are documents rather than video, so they never go near Bunny —
+// see local-material-storage.ts. Students download them through the playback
+// module, which owns the "is this person allowed to see this lesson?" rule.
+coursesRouter.post(
+  "/:courseId/modules/:moduleId/lessons/:lessonId/materials",
+  validate(lessonIdParamSchema, "params"),
+  materialUpload.single("file"),
+  coursesController.addLessonMaterial
+);
+coursesRouter.delete(
+  "/:courseId/modules/:moduleId/lessons/:lessonId/materials/:materialId",
+  validate(materialIdParamSchema, "params"),
+  coursesController.removeLessonMaterial
 );

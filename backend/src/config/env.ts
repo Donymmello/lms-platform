@@ -84,6 +84,11 @@ const envSchema = z.object({
   // volume, or every container rebuild loses the uploads.
   LOCAL_VIDEO_DIR: z.string().default("/app/uploads/videos"),
 
+  // --- Lesson materials (slides, worksheets, source files) ---
+  // Always local: Bunny hosts video and nothing else, so there is no CDN
+  // fallback for these. Same warning about needing a mounted volume.
+  LOCAL_MATERIAL_DIR: z.string().default("/app/uploads/materials"),
+
   // --- Bunny Stream (video hosting + signed playback) ---
   // https://bunny.net/docs/stream/ — create a Stream library in the
   // dashboard to get the library id, API key (management API) and the

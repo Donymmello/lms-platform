@@ -52,6 +52,7 @@ Sem configurar nada, o upload e a reprodução funcionam — é assim que se des
 |---|---|---|
 | Configuração | nenhuma | 3 variáveis |
 | Formatos | mp4, webm, ogg, mov, m4v | qualquer um |
+| Codecs | **H.264 + AAC** — o ficheiro é inspecionado e recusado se não servir | qualquer um |
 | Transcodificação | não | sim |
 | Qualidade adaptativa | não | sim |
 | CDN | não, sai tudo do teu servidor | sim |
@@ -68,6 +69,13 @@ BUNNY_STREAM_TOKEN_AUTH_KEY=...
 A `TOKEN_AUTH_KEY` está nas definições de segurança da biblioteca e **não é** a chave da API — são diferentes.
 
 Os vídeos já carregados localmente continuam a funcionar depois da mudança: o id de cada um diz onde vive.
+
+**Sem CDN, o codec é que manda, não a extensão.** Um `.mp4` pode não ter faixa de vídeo nenhuma, ou trazer H.265 que nenhum navegador reproduz — e ambos passariam por qualquer validação de extensão ou mimetype. O upload abre o ficheiro e recusa, com explicação, quando:
+
+- não há faixa de vídeo (ficheiro só com áudio)
+- o vídeo está em H.265/HEVC, Dolby Vision ou ProRes
+
+H.265 é o que um iPhone grava por omissão e o que muitos editores exportam como "alta qualidade", por isso é provável que tropeces nele. Com o Bunny configurado nada disto importa: ele transcodifica.
 
 Limite de 500 MB por ficheiro, verificado no browser e no servidor. Em desenvolvimento os ficheiros ficam num volume (`backend_uploads`), por isso sobrevivem a recriar o container — mas correr `docker compose up -d` é preciso uma vez para o volume ser ligado.
 
@@ -133,7 +141,7 @@ Correr a suite:
 docker exec lms_backend npm test
 ```
 
-Cobertura atual — 106 testes: autenticação e rate limiting, cursos/módulos/aulas (CRUD e ownership), inscrições, pagamentos (checkout, webhooks, captura PayPal), playback assinado, progresso de aulas e analytics.
+Cobertura atual — 245 testes: autenticação, 2FA e rate limiting, recuperação de password, cursos/módulos/aulas (CRUD e ownership), materiais de aula (upload, allowlist, download com acesso verificado), inscrições, pagamentos (checkout, webhooks, captura PayPal), playback assinado, vídeo local (streaming com Range e validação do ficheiro), progresso de aulas (manual e por posição do player) e analytics.
 
 Os gateways de pagamento (PaySuite, PayPal) são substituídos por um mock **apenas na fronteira do adaptador**. Tudo abaixo disso — criação da linha de pagamento, desbloqueio da inscrição, idempotência de entregas repetidas, rejeição de assinatura inválida — corre a sério.
 

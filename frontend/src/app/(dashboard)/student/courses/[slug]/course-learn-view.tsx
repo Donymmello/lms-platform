@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, Check, Film, Loader2, Lock, Play } from "lucide-react";
+import { AlertCircle, ArrowLeft, Check, Download, Film, Loader2, Lock, Play } from "lucide-react";
 
-import { ApiError } from "@/services/api-client";
+import { apiUrl, ApiError } from "@/services/api-client";
 import { LiveSessionsPanel } from "./live-sessions-panel";
 import { playbackService } from "@/services/playback.service";
 import { progressService } from "@/services/progress.service";
@@ -46,6 +46,13 @@ function firstLessonId(course: CourseDetail): string | null {
     if (lessons[0]) return lessons[0].id;
   }
   return null;
+}
+
+/** Rounded to whole units — the point is "is this a big download?", not the exact byte count. */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatDuration(seconds: number | null): string | null {
@@ -289,6 +296,36 @@ export function CourseLearnView({ slug }: CourseLearnViewProps) {
                   <p className="max-w-2xl whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
                     {selectedLesson.description}
                   </p>
+                )}
+
+                {selectedLesson.materials.length > 0 && (
+                  <div className="max-w-2xl space-y-2">
+                    <p className="text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
+                      Materiais da aula
+                    </p>
+                    <ul className="space-y-1.5">
+                      {selectedLesson.materials.map((material) => (
+                        <li key={material.id}>
+                          {/*
+                            A plain link rather than a fetch: the download goes
+                            straight to the API, and a top-level navigation
+                            carries the SameSite=Lax session cookie, which is
+                            what the access check on the other end needs.
+                          */}
+                          <a
+                            href={apiUrl(`/lessons/${selectedLesson.id}/materials/${material.id}`)}
+                            className="inline-flex items-center gap-2 rounded-lg border border-border/70 px-3 py-2 text-sm transition-colors hover:border-primary/50 hover:bg-secondary/40"
+                          >
+                            <Download className="h-3.5 w-3.5 shrink-0 text-primary" />
+                            <span className="truncate">{material.fileName}</span>
+                            <span className="shrink-0 text-xs text-muted-foreground">
+                              {formatBytes(material.sizeBytes)}
+                            </span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
               </>
             ) : (

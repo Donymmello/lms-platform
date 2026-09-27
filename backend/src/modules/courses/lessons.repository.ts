@@ -1,4 +1,4 @@
-import { Lesson } from "@prisma/client";
+import { Lesson, LessonMaterial } from "@prisma/client";
 import { prisma } from "../../database/prisma";
 
 export const lessonsRepository = {
@@ -38,5 +38,23 @@ export const lessonsRepository = {
 
   setVideo(id: string, bunnyVideoId: string | null): Promise<Lesson> {
     return prisma.lesson.update({ where: { id }, data: { bunnyVideoId } });
+  },
+
+  addMaterial(data: {
+    lessonId: string;
+    fileName: string;
+    contentType: string;
+    sizeBytes: number;
+    storedName: string;
+  }): Promise<LessonMaterial> {
+    return prisma.lessonMaterial.create({ data });
+  },
+
+  findMaterial(id: string): Promise<LessonMaterial | null> {
+    return prisma.lessonMaterial.findUnique({ where: { id } });
+  },
+
+  deleteMaterial(id: string): Promise<LessonMaterial> {
+    return prisma.lessonMaterial.delete({ where: { id } });
   },
 };

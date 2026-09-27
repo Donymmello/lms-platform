@@ -45,6 +45,16 @@ function resolveBaseUrl(): string {
   return env.NEXT_PUBLIC_API_URL;
 }
 
+/**
+ * The absolute URL of an API path, for the cases a plain link or a media
+ * element has to reach the API directly rather than going through `apiFetch` —
+ * a file download, for instance. The session cookie is `SameSite=Lax`, so it
+ * travels with a top-level navigation like a download link.
+ */
+export function apiUrl(path: string): string {
+  return `${resolveBaseUrl()}${path}`;
+}
+
 /** Shared response handling for both `apiFetch` and `apiUpload` — parses JSON when present and throws `ApiError` for any non-2xx status. */
 async function handleResponse<T>(response: Response): Promise<T> {
   const isJson = response.headers.get("content-type")?.includes("application/json");

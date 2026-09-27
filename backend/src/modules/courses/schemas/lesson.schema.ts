@@ -21,3 +21,9 @@ export const updateLessonSchema = z.object({
 export type LessonIdParam = z.infer<typeof lessonIdParamSchema>;
 export type CreateLessonInput = z.infer<typeof createLessonSchema>;
 export type UpdateLessonInput = z.infer<typeof updateLessonSchema>;
+
+/** Same as lessonIdParamSchema, plus the material being removed. */
+export const materialIdParamSchema = lessonIdParamSchema.extend({
+  materialId: z.string().uuid("Invalid material id"),
+});
+export type MaterialIdParam = z.infer<typeof materialIdParamSchema>;

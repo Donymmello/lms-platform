@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { ArrowLeft, ArrowDown, ArrowUp, Film, Loader2, Plus, Radio, Trash2, Upload, X } from "lucide-react";
+import { ArrowLeft, ArrowDown, ArrowUp, Film, Loader2, Paperclip, Plus, Radio, Trash2, Upload, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,11 @@ import { CourseFormValues, courseFormSchema } from "@/validators/course.validato
 // — checked client-side purely so a huge file fails fast with a clear
 // message instead of after a slow upload.
 const MAX_VIDEO_BYTES = 500 * 1024 * 1024;
+/** Mirrors the server's own limit in materialUpload.ts. */
+const MAX_MATERIAL_BYTES = 50 * 1024 * 1024;
+/** Mirrors the server's allowlist in local-material-storage.ts — no .html or .svg, which would run script on the API's origin. */
+const MATERIAL_EXTENSIONS =
+  ".pdf,.zip,.txt,.csv,.md,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.png,.jpg,.jpeg,.gif,.webp";
 
 interface CourseEditorProps {
   courseId: string;
@@ -511,7 +516,9 @@ function LessonRow({
   const [title, setTitle] = useState(lesson.title);
   const [isBusy, setIsBusy] = useState(false);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [isUploadingMaterial, setIsUploadingMaterial] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const materialInputRef = useRef<HTMLInputElement>(null);
 
   function handleApiError(err: unknown, fallback: string) {
     onError(err instanceof ApiError ? err.message : fallback);
@@ -602,6 +609,40 @@ function LessonRow({
     }
   }
 
+  async function handleMaterialSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Reset so selecting the same file again still fires onChange.
+    e.target.value = "";
+    if (!file) return;
+
+    if (file.size > MAX_MATERIAL_BYTES) {
+      onError("O ficheiro excede o limite de 50MB.");
+      return;
+    }
+
+    setIsUploadingMaterial(true);
+    try {
+      onCourseChange(await coursesService.addLessonMaterial(courseId, moduleId, lesson.id, file));
+    } catch (err) {
+      handleApiError(err, "Não foi possível anexar o ficheiro.");
+    } finally {
+      setIsUploadingMaterial(false);
+    }
+  }
+
+  async function handleRemoveMaterial(materialId: string) {
+    setIsUploadingMaterial(true);
+    try {
+      onCourseChange(
+        await coursesService.removeLessonMaterial(courseId, moduleId, lesson.id, materialId)
+      );
+    } catch (err) {
+      handleApiError(err, "Não foi possível remover o ficheiro.");
+    } finally {
+      setIsUploadingMaterial(false);
+    }
+  }
+
   async function handleRemoveVideo() {
     setIsUploadingVideo(true);
     try {
@@ -614,7 +655,8 @@ function LessonRow({
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-md bg-secondary/40 px-2 py-1.5">
+    <div className="rounded-md bg-secondary/40 px-2 py-1.5">
+      <div className="flex items-center gap-2">
       <div className="flex flex-col">
         <button
           className="text-muted-foreground hover:text-foreground disabled:opacity-30"
@@ -715,6 +757,61 @@ function LessonRow({
       >
         <Trash2 className="h-3.5 w-3.5 text-destructive" />
       </ConfirmButton>
+      </div>
+
+      {/* --- Materials: everything that goes with the lesson but isn't the video. --- */}
+      <input
+        ref={materialInputRef}
+        type="file"
+        accept={MATERIAL_EXTENSIONS}
+        onChange={handleMaterialSelected}
+        className="hidden"
+      />
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-6">
+        {lesson.materials.map((material) => (
+          <span
+            key={material.id}
+            className="inline-flex items-center gap-1 rounded-full border border-border bg-background/60 py-0.5 pl-2 pr-0.5 text-xs"
+          >
+            <Paperclip className="h-3 w-3 shrink-0 text-muted-foreground" />
+            <span className="max-w-[14rem] truncate" title={material.fileName}>
+              {material.fileName}
+            </span>
+            <span className="shrink-0 text-muted-foreground">{formatBytes(material.sizeBytes)}</span>
+            <ConfirmButton
+              disabled={isUploadingMaterial}
+              onConfirm={() => void handleRemoveMaterial(material.id)}
+              confirmLabel="Remover?"
+              aria-label={`Remover ${material.fileName}`}
+              className="inline-flex h-5 items-center justify-center rounded-full px-1 transition-colors hover:bg-secondary disabled:pointer-events-none disabled:opacity-50"
+              armedClassName="bg-destructive/10 text-destructive"
+            >
+              <X className="h-3 w-3 text-destructive" />
+            </ConfirmButton>
+          </span>
+        ))}
+
+        <button
+          type="button"
+          disabled={isUploadingMaterial}
+          onClick={() => materialInputRef.current?.click()}
+          className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-50"
+        >
+          {isUploadingMaterial ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Paperclip className="h-3 w-3" />
+          )}
+          Anexar material
+        </button>
+      </div>
     </div>
   );
+}
+
+/** Rounded to whole units — the point is "is this a big download?", not the exact byte count. */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

@@ -5,6 +5,7 @@ import { bunnyStream } from "../../integrations/bunny-stream";
 import { isLocalVideoId } from "../../integrations/local-video-storage";
 import { env } from "../../config/env";
 import { enrollmentsRepository } from "../enrollments/enrollments.repository";
+import { lessonsRepository } from "../courses/lessons.repository";
 import { progressRepository } from "../progress/progress.repository";
 import { LessonWithCourseContext, playbackRepository } from "./playback.repository";
 
@@ -112,6 +113,36 @@ export const playbackService = {
     }
 
     return { videoId: lesson.bunnyVideoId };
+  },
+
+  /**
+   * Resolves a lesson material for download, under exactly the same rule as
+   * watching the lesson: a paid course's worksheets are behind the same
+   * paywall its video is, and a free preview's are as open as its video.
+   */
+  async getMaterialForDownload(
+    lessonId: string,
+    materialId: string,
+    actingUser: AuthenticatedUser | undefined
+  ): Promise<{ fileName: string; contentType: string; storedName: string }> {
+    const lesson = await playbackRepository.findLessonWithCourse(lessonId);
+
+    if (!lesson || lesson.course.status !== CourseStatus.PUBLISHED) {
+      throw new NotFoundError("Lesson not found");
+    }
+
+    const material = await lessonsRepository.findMaterial(materialId);
+    // Checking it belongs to this lesson is what makes the access check above
+    // mean anything: otherwise any lesson id would unlock any material.
+    if (!material || material.lessonId !== lessonId) {
+      throw new NotFoundError("Material not found");
+    }
+
+    if (!(await resolveAccess(lesson, actingUser))) {
+      throw new ForbiddenError("You need to be enrolled in this course to download this material");
+    }
+
+    return { fileName: material.fileName, contentType: material.contentType, storedName: material.storedName };
   },
 };
 

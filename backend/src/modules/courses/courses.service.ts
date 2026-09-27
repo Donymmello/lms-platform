@@ -39,6 +39,14 @@ function toLessonDto(lesson: CourseWithDetailRelations["modules"][number]["lesso
     isFreePreview: lesson.isFreePreview,
     durationSeconds: lesson.durationSeconds,
     hasVideo: Boolean(lesson.bunnyVideoId),
+    // Names and sizes only — the bytes go through their own access-checked
+    // route, exactly like the video does.
+    materials: lesson.materials.map((material) => ({
+      id: material.id,
+      fileName: material.fileName,
+      contentType: material.contentType,
+      sizeBytes: material.sizeBytes,
+    })),
   };
 }
 

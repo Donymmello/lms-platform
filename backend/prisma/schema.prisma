@@ -135,6 +135,7 @@ model Lesson {
   module   CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
   progress  LessonProgress[]
+  materials LessonMaterial[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -142,6 +143,28 @@ model Lesson {
   @@map("lessons")
 }
 
+/// A downloadable that goes with a lesson — slides, a worksheet, the source
+/// files. Always kept on this server's own disk: Bunny Stream hosts video and
+/// nothing else, so there is no CDN path to fall back to here.
+model LessonMaterial {
+  id       String @id @default(uuid())
+  lessonId String
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  /// The name the instructor's file had. Shown to students and used for the
+  /// download, but never as a path — see storedName for that.
+  fileName    String
+  contentType String
+  sizeBytes   Int
+  /// The single path segment the bytes live under, inside the materials
+  /// directory. Generated here, never taken from the upload.
+  storedName  String
+
+  createdAt DateTime @default(now())
+
+  @@index([lessonId])
+  @@map("lesson_materials")
+}
 
 /// One row per (user, lesson) the user has ever opened. `lastAccessedAt` is
 /// touched every time a signed playback URL is issued to them (see

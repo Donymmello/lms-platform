@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../../utils/asyncHandler";
+import { attachmentDisposition } from "../../utils/content-disposition";
 import { contentTypeFor, localVideoStorage } from "../../integrations/local-video-storage";
+import { localMaterialStorage } from "../../integrations/local-material-storage";
 import { playbackService } from "./playback.service";
-import { LessonIdParam } from "./schemas/playback.schema";
+import { LessonIdParam, MaterialParam } from "./schemas/playback.schema";
 
 /** `bytes=start-end`, either side optional. Anything else is treated as no range at all. */
 function parseRange(header: string | undefined, size: number): { start: number; end: number } | null {
@@ -52,5 +54,26 @@ export const playbackController = {
     res.setHeader("Content-Range", `bytes ${range.start}-${range.end}/${size}`);
     res.setHeader("Content-Length", String(range.end - range.start + 1));
     localVideoStorage.createStream(videoId, range).pipe(res);
+  }),
+
+  downloadMaterial: asyncHandler(async (req: Request<MaterialParam>, res: Response) => {
+    const material = await playbackService.getMaterialForDownload(
+      req.params.lessonId,
+      req.params.materialId,
+      req.user
+    );
+
+    res.setHeader("Content-Type", material.contentType);
+    res.setHeader("Content-Length", String(await localMaterialStorage.sizeOf(material.storedName)));
+    // Two headers that matter more than they look, because these bytes were
+    // uploaded by a user and are served from the API's own origin — the one
+    // holding the session cookie. `attachment` stops the browser rendering the
+    // file in that origin, and `nosniff` stops it second-guessing the type it
+    // was given. The upload allowlist refuses HTML and SVG for the same reason.
+    res.setHeader("Content-Disposition", attachmentDisposition(material.fileName));
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "private, max-age=0, no-store");
+
+    localMaterialStorage.createStream(material.storedName).pipe(res);
   }),
 };

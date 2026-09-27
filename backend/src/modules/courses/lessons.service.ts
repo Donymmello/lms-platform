@@ -1,7 +1,9 @@
 import fs from "node:fs/promises";
+import path from "node:path";
 import { NotFoundError } from "../../errors";
 import { AuthenticatedUser } from "../../@types/express";
 import { bunnyStream } from "../../integrations/bunny-stream";
+import { localMaterialStorage, materialContentType } from "../../integrations/local-material-storage";
 import { isLocalVideoId, localVideoStorage } from "../../integrations/local-video-storage";
 import { isBunnyConfigured } from "../../integrations/video-provider";
 import { assertCanManage, requireCourse, requireCourseWithContent, toDetailDto } from "./courses.service";
@@ -129,6 +131,64 @@ export const lessonsService = {
       await removeStoredVideo(lesson.bunnyVideoId);
       await lessonsRepository.setVideo(lessonId, null);
     }
+
+    return toDetailDto(await requireCourseWithContent(courseId));
+  },
+
+  /** Attaches a downloadable to a lesson — slides, a worksheet, exercise files. */
+  async addMaterial(
+    courseId: string,
+    moduleId: string,
+    lessonId: string,
+    file: { path: string; originalname: string; size: number },
+    actingUser: AuthenticatedUser
+  ): Promise<CourseDetailDto> {
+    const course = await requireCourse(courseId);
+    assertCanManage(course, actingUser);
+    await requireModuleInCourse(courseId, moduleId);
+    await requireLessonInModule(moduleId, lessonId);
+
+    try {
+      const storedName = await localMaterialStorage.store(file.path, file.originalname);
+      await lessonsRepository.addMaterial({
+        lessonId,
+        // The name is kept for display only. `storedName` is what touches the
+        // filesystem, and it is generated rather than taken from the upload.
+        fileName: path.basename(file.originalname),
+        contentType: materialContentType(file.originalname),
+        sizeBytes: file.size,
+        storedName,
+      });
+    } finally {
+      await fs.unlink(file.path).catch(() => {
+        // Temp file cleanup is best-effort — a leftover temp file costs disk, not correctness.
+      });
+    }
+
+    return toDetailDto(await requireCourseWithContent(courseId));
+  },
+
+  async removeMaterial(
+    courseId: string,
+    moduleId: string,
+    lessonId: string,
+    materialId: string,
+    actingUser: AuthenticatedUser
+  ): Promise<CourseDetailDto> {
+    const course = await requireCourse(courseId);
+    assertCanManage(course, actingUser);
+    await requireModuleInCourse(courseId, moduleId);
+    await requireLessonInModule(moduleId, lessonId);
+
+    const material = await lessonsRepository.findMaterial(materialId);
+    // Belonging to *this* lesson matters: the id alone would otherwise let the
+    // owner of one course delete a material from another.
+    if (!material || material.lessonId !== lessonId) {
+      throw new NotFoundError("Material not found");
+    }
+
+    await lessonsRepository.deleteMaterial(materialId);
+    await localMaterialStorage.remove(material.storedName);
 
     return toDetailDto(await requireCourseWithContent(courseId));
   },

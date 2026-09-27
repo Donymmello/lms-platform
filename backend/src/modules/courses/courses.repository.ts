@@ -27,7 +27,12 @@ export const detailInclude = {
   instructor: { select: { id: true, name: true } },
   modules: {
     orderBy: { order: "asc" },
-    include: { lessons: { orderBy: { order: "asc" } } },
+    include: {
+      lessons: {
+        orderBy: { order: "asc" },
+        include: { materials: { orderBy: { createdAt: "asc" } } },
+      },
+    },
   },
 } satisfies Prisma.CourseInclude;
 

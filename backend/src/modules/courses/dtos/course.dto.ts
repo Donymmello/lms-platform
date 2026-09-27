@@ -11,6 +11,15 @@ export interface LessonResponseDto {
   /// video is attached — actual playback goes through a signed-URL endpoint
   /// once the video module is wired up.
   hasVideo: boolean;
+  materials: LessonMaterialDto[];
+}
+
+/** A downloadable attached to a lesson. The bytes themselves go through a separate, access-checked route. */
+export interface LessonMaterialDto {
+  id: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
 }
 
 export interface CourseModuleResponseDto {
