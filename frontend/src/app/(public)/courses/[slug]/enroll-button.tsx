@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -32,9 +32,42 @@ export function EnrollButton({ courseId, courseSlug, priceCents }: EnrollButtonP
   const router = useRouter();
   const { user, isLoading } = useAuth();
   const [provider, setProvider] = useState<PaymentProvider>("MPESA");
-  const [status, setStatus] = useState<"idle" | "submitting" | "enrolled">("idle");
+  const [status, setStatus] = useState<"checking" | "idle" | "submitting" | "enrolled">("checking");
   const [error, setError] = useState<string | null>(null);
   const isPaid = priceCents > 0;
+
+  /**
+   * Asks up front whether this course is already theirs. Without it the page
+   * offered to enrol someone who enrolled weeks ago, and only the 409 from
+   * pressing the button gave the game away.
+   *
+   * `GET /enrollments/me` returns the whole list rather than answering about
+   * one course, which is fine at the size a student's library actually reaches.
+   */
+  useEffect(() => {
+    if (isLoading) return;
+    if (!user) {
+      setStatus("idle");
+      return;
+    }
+
+    let cancelled = false;
+    enrollmentsService
+      .listMine()
+      .then((enrollments) => {
+        if (cancelled) return;
+        setStatus(enrollments.some((enrollment) => enrollment.course.id === courseId) ? "enrolled" : "idle");
+      })
+      .catch(() => {
+        // Falling back to offering enrolment is the safe way to be wrong: the
+        // server refuses a duplicate anyway, and this branch handles the 409.
+        if (!cancelled) setStatus("idle");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, isLoading, user]);
 
   async function handleFreeEnroll() {
     setError(null);
@@ -72,7 +105,7 @@ export function EnrollButton({ courseId, courseSlug, priceCents }: EnrollButtonP
     }
   }
 
-  if (isLoading) {
+  if (isLoading || status === "checking") {
     return (
       <button type="button" disabled className={PRIMARY_BUTTON}>
         <Loader2 className="h-4 w-4 animate-spin" />
