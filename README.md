@@ -18,7 +18,15 @@ docker compose up -d
 
 As dependências vivem dentro dos containers (o compose usa volumes anónimos para `/app/node_modules`), por isso **não** é preciso `npm install` na máquina host.
 
-> O `ts-node-dev` não deteta alterações feitas no host através do bind mount do Windows. Depois de editar código do backend, corre `docker restart lms_backend`.
+### Recarregamento automático
+
+Eventos inotify não atravessam o bind mount do Windows para dentro do container, por isso os dois observadores usam polling: `WATCHPACK_POLLING` no frontend e `--poll --interval=3000` no `ts-node-dev`. Guardar um ficheiro recarrega sozinho, dos dois lados, em até três segundos.
+
+O intervalo de três segundos não é arbitrário: com o polling no intervalo por omissão o backend consumia ~28% de CPU permanentemente, contra ~2% assim.
+
+O Prisma Client é regerado no arranque do container (ver o `CMD` em `backend/Dockerfile`). O volume de `/app/node_modules` é anónimo, e o Docker preenche um novo a partir da imagem cada vez que o container é recriado — trazendo de volta o cliente gerado no build, que não conhece migrations feitas depois. Sem isto, um `docker compose up` depois de mudar o schema devolvia 500 (`Unknown field ... for include statement`) no primeiro pedido que tocasse nos campos novos.
+
+Uma coisa continua manual: **depois de adicionar uma dependência**, corre `docker compose exec backend npm install` (ou reconstrói a imagem). Instalar no arranque reescreveria o `package-lock.json` do host a cada vez.
 
 ## Migrations
 

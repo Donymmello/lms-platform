@@ -126,6 +126,10 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: development
+      # The source is a Windows bind mount, and inotify events do not cross it
+      # into the container: without polling, webpack never learns a file changed
+      # and keeps serving whatever it compiled at startup.
+      WATCHPACK_POLLING: "true"
       NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
       # Used only for server-side fetches (Server Components,
       # generateMetadata). Inside Docker, `localhost` from the frontend

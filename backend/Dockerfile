@@ -66,8 +66,25 @@
 
     COPY . .
 
+    # Generated here so the image can run without a database, and again at
+    # startup below — see the CMD for why both are needed.
     RUN npx prisma generate
 
     EXPOSE 5000
 
-    CMD ["npm", "run", "dev"]
+    # Prisma Client is regenerated on every start, not just at build.
+    #
+    # docker-compose mounts an anonymous volume over /app/node_modules, and
+    # Docker fills a *new* one from the image every time the container is
+    # recreated. The client baked into the image matches the schema as it was
+    # when the image was built, so any migration since then left the running
+    # container with a client that does not know the new fields — a 500 from
+    # Prisma ("Unknown field ... for include statement") on the first request
+    # to touch them. Generating at startup keeps the client and the schema on
+    # disk in step, whatever state the volume came back in.
+    #
+    # Costs a second or two on a warm volume. Note this does NOT install new
+    # dependencies: after adding a package, run `npm install` in the container
+    # (or rebuild the image), because doing that here would rewrite the
+    # bind-mounted package-lock.json on every start.
+    CMD ["sh", "-c", "npx prisma generate && npm run dev"]
