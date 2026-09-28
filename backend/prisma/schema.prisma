@@ -50,6 +50,7 @@ model User {
   enrollments     Enrollment[]
   payments        Payment[]
   lessonProgress  LessonProgress[]
+  assessmentAttempts AssessmentAttempt[]
 
   @@map("users")
 }
@@ -110,12 +111,108 @@ model CourseModule {
   courseId String
   course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
-  lessons   Lesson[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  lessons    Lesson[]
+  assessment Assessment?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([courseId])
   @@map("course_modules")
+}
+
+/// The quiz at the end of a module. One per module — the module is the unit a
+/// student finishes, so that is where the check belongs.
+model Assessment {
+  id       String       @id @default(uuid())
+  moduleId String       @unique
+  module   CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  title String
+  /// Percentage needed to pass, 0-100. Informational: nothing is locked behind
+  /// it, a student who fails can retake and can move on either way.
+  passScore Int @default(70)
+
+  questions AssessmentQuestion[]
+  attempts  AssessmentAttempt[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("assessments")
+}
+
+/// There is no question "type" column on purpose. A question with one correct
+/// option is single-choice, one with several is "select all that apply", and
+/// true/false is just a question whose two options are Verdadeiro and Falso.
+/// The shape of the options already says which it is.
+model AssessmentQuestion {
+  id           String     @id @default(uuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  prompt String
+  order  Int
+
+  options AssessmentOption[]
+  answers AssessmentAnswer[]
+
+  @@index([assessmentId])
+  @@map("assessment_questions")
+}
+
+model AssessmentOption {
+  id         String             @id @default(uuid())
+  questionId String
+  question   AssessmentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  text String
+  /// Never leaves the server for a student — see the DTOs in the assessments
+  /// module, which have separate shapes for taking a quiz and editing one.
+  isCorrect Boolean
+  order     Int
+
+  @@index([questionId])
+  @@map("assessment_options")
+}
+
+/// One sitting. Attempts are unlimited and every one is kept: the best score
+/// is what counts, and the history is what lets a student see they improved.
+model AssessmentAttempt {
+  id           String     @id @default(uuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// 0-100, rounded. Whole questions only: selecting two of three correct
+  /// options scores nothing for that question rather than two thirds.
+  score  Int
+  passed Boolean
+
+  answers   AssessmentAnswer[]
+  createdAt DateTime @default(now())
+
+  @@index([assessmentId, userId])
+  @@map("assessment_attempts")
+}
+
+/// What was picked, so a finished attempt can be reviewed question by question.
+model AssessmentAnswer {
+  id        String            @id @default(uuid())
+  attemptId String
+  attempt   AssessmentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  questionId String
+  question   AssessmentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  /// The option ids the student chose. An array rather than a join table: it is
+  /// only ever read back whole, alongside its attempt.
+  selectedOptionIds String[]
+  correct           Boolean
+
+  @@index([attemptId])
+  @@index([questionId])
+  @@map("assessment_answers")
 }
 
 model Lesson {

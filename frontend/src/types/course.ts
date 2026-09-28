@@ -24,11 +24,18 @@ export interface LessonItem {
   materials: LessonMaterial[];
 }
 
+/** That the module has an end-of-module quiz, and how big it is — never the questions. */
+export interface ModuleAssessmentSummary {
+  title: string;
+  questionCount: number;
+}
+
 export interface CourseModuleItem {
   id: string;
   title: string;
   order: number;
   lessons: LessonItem[];
+  assessment: ModuleAssessmentSummary | null;
 }
 
 export interface CourseListItem {

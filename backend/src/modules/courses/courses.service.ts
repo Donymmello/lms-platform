@@ -65,6 +65,12 @@ function toDetailDto(course: CourseWithDetailRelations): CourseDetailDto {
       title: courseModule.title,
       order: courseModule.order,
       lessons: courseModule.lessons.map(toLessonDto),
+      assessment: courseModule.assessment
+        ? {
+            title: courseModule.assessment.title,
+            questionCount: courseModule.assessment._count.questions,
+          }
+        : null,
     })),
     createdAt: course.createdAt,
     updatedAt: course.updatedAt,

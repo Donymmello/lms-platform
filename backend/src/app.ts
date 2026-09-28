@@ -12,6 +12,7 @@ import { enrollmentsRouter } from "./modules/enrollments/enrollments.routes";
 import { liveSessionsRouter } from "./modules/live-sessions/live-sessions.routes";
 import { paymentsRouter } from "./modules/payments/payments.routes";
 import { playbackRouter } from "./modules/playback/playback.routes";
+import { assessmentsRouter } from "./modules/assessments/assessments.routes";
 import { progressRouter } from "./modules/progress/progress.routes";
 import { errorHandler, notFoundHandler } from "./middlewares/errorHandler";
 
@@ -58,6 +59,7 @@ export function createApp(): Express {
   app.use("/api/v1/payments", paymentsRouter);
   app.use("/api/v1/lessons", playbackRouter);
   app.use("/api/v1/progress", progressRouter);
+  app.use("/api/v1/modules", assessmentsRouter);
   app.use("/api/v1/analytics", analyticsRouter);
   app.use("/api/v1/live-sessions", liveSessionsRouter);
 

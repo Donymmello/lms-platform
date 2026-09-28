@@ -5,7 +5,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { ArrowLeft, ArrowDown, ArrowUp, Film, Loader2, Paperclip, Plus, Radio, Trash2, Upload, X } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowDown,
+  ArrowUp,
+  ClipboardCheck,
+  Film,
+  Loader2,
+  Paperclip,
+  Plus,
+  Radio,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -144,7 +157,7 @@ export function CourseEditor({ courseId, basePath }: CourseEditorProps) {
 
       <CourseInfoForm course={course} onSaved={setCourse} />
 
-      <ModulesSection course={course} onCourseChange={setCourse} onError={setError} />
+      <ModulesSection course={course} basePath={basePath} onCourseChange={setCourse} onError={setError} />
     </div>
   );
 }
@@ -261,10 +274,12 @@ function CourseInfoForm({
 
 function ModulesSection({
   course,
+  basePath,
   onCourseChange,
   onError,
 }: {
   course: CourseDetail;
+  basePath: string;
   onCourseChange: (course: CourseDetail) => void;
   onError: (message: string) => void;
 }) {
@@ -304,6 +319,7 @@ function ModulesSection({
           <ModuleCard
             key={courseModule.id}
             courseId={course.id}
+            basePath={basePath}
             courseModule={courseModule}
             isFirst={index === 0}
             isLast={index === sortedModules.length - 1}
@@ -333,6 +349,7 @@ function ModulesSection({
 
 function ModuleCard({
   courseId,
+  basePath,
   courseModule,
   isFirst,
   isLast,
@@ -342,6 +359,7 @@ function ModuleCard({
   onError,
 }: {
   courseId: string;
+  basePath: string;
   courseModule: CourseModuleItem;
   isFirst: boolean;
   isLast: boolean;
@@ -486,6 +504,35 @@ function ModuleCard({
             {isBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
             Aula
           </Button>
+        </div>
+
+        {/* The quiz sits at the end of the module, which is where a student meets it. */}
+        <div className="flex items-center gap-2 border-t border-border/60 pt-3">
+          <ClipboardCheck className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          {courseModule.assessment ? (
+            <>
+              <span className="min-w-0 flex-1 truncate text-sm">{courseModule.assessment.title}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">
+                {courseModule.assessment.questionCount}{" "}
+                {courseModule.assessment.questionCount === 1 ? "pergunta" : "perguntas"}
+              </span>
+              <Button asChild variant="outline" size="sm">
+                <Link href={`${basePath}/courses/${courseId}/modules/${courseModule.id}/assessment`}>
+                  Editar
+                </Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <span className="flex-1 text-sm text-muted-foreground">Sem avaliação</span>
+              <Button asChild variant="outline" size="sm">
+                <Link href={`${basePath}/courses/${courseId}/modules/${courseModule.id}/assessment`}>
+                  <Plus className="h-3 w-3" />
+                  Avaliação
+                </Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </div>

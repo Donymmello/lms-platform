@@ -22,11 +22,18 @@ export interface LessonMaterialDto {
   sizeBytes: number;
 }
 
+/** That a module has a quiz, and how big it is — never the questions. */
+export interface ModuleAssessmentSummaryDto {
+  title: string;
+  questionCount: number;
+}
+
 export interface CourseModuleResponseDto {
   id: string;
   title: string;
   order: number;
   lessons: LessonResponseDto[];
+  assessment: ModuleAssessmentSummaryDto | null;
 }
 
 export interface CourseInstructorDto {

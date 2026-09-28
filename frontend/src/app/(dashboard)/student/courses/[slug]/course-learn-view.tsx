@@ -2,10 +2,21 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, Check, Download, Film, Loader2, Lock, Play } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  Check,
+  ClipboardCheck,
+  Download,
+  Film,
+  Loader2,
+  Lock,
+  Play,
+} from "lucide-react";
 
 import { apiUrl, ApiError } from "@/services/api-client";
 import { LiveSessionsPanel } from "./live-sessions-panel";
+import { ModuleAssessment } from "./module-assessment";
 import { playbackService } from "@/services/playback.service";
 import { progressService } from "@/services/progress.service";
 import { publicCoursesService } from "@/services/public-courses.service";
@@ -72,6 +83,8 @@ export function CourseLearnView({ slug }: CourseLearnViewProps) {
   // a failed fetch here just means "no progress UI", not an error to show.
   const [progress, setProgress] = useState<CourseProgress | null>(null);
   const [isTogglingComplete, setIsTogglingComplete] = useState(false);
+  // Non-null means the module's quiz has taken over the view from the player.
+  const [assessmentModuleId, setAssessmentModuleId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -224,7 +237,7 @@ export function CourseLearnView({ slug }: CourseLearnViewProps) {
   return (
     <div>
       {/* --- Stage: the video gets the full width and a warm bloom behind it. --- */}
-      <div className="relative border-b border-border/60 bg-black">
+      <div className={`relative border-b border-border/60 bg-black ${assessmentModuleId ? "hidden" : ""}`}>
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
         <div className="mx-auto max-w-[78rem] px-0 sm:px-6 lg:px-10">
           <VideoPlayer
@@ -261,9 +274,11 @@ export function CourseLearnView({ slug }: CourseLearnViewProps) {
         </div>
 
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-10">
-          {/* --- Now playing --- */}
+          {/* --- Now playing, or the module quiz when one is open --- */}
           <div className="space-y-5">
-            {selectedLesson ? (
+            {assessmentModuleId ? (
+              <ModuleAssessment moduleId={assessmentModuleId} />
+            ) : selectedLesson ? (
               <>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0 space-y-1">
@@ -363,7 +378,10 @@ export function CourseLearnView({ slug }: CourseLearnViewProps) {
                           <li key={lesson.id}>
                             <button
                               type="button"
-                              onClick={() => setSelectedLessonId(lesson.id)}
+                              onClick={() => {
+                                setAssessmentModuleId(null);
+                                setSelectedLessonId(lesson.id);
+                              }}
                               aria-current={isActive ? "true" : undefined}
                               className={`group relative flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
                                 isActive ? "bg-primary/[0.09]" : "hover:bg-secondary/70"
@@ -413,6 +431,40 @@ export function CourseLearnView({ slug }: CourseLearnViewProps) {
 
                     {courseModule.lessons.length === 0 && (
                       <li className="px-4 py-3 text-sm text-muted-foreground">Sem aulas.</li>
+                    )}
+
+                    {courseModule.assessment && (
+                      <li className="border-t border-border/60">
+                        <button
+                          type="button"
+                          onClick={() => setAssessmentModuleId(courseModule.id)}
+                          aria-current={assessmentModuleId === courseModule.id ? "true" : undefined}
+                          className={`group relative flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                            assessmentModuleId === courseModule.id
+                              ? "bg-primary/[0.09]"
+                              : "hover:bg-secondary/70"
+                          }`}
+                        >
+                          {assessmentModuleId === courseModule.id && (
+                            <span className="absolute inset-y-0 left-0 w-[2px] bg-primary" />
+                          )}
+                          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-border text-muted-foreground group-hover:border-muted-foreground">
+                            <ClipboardCheck className="h-3 w-3" />
+                          </span>
+                          <span
+                            className={`flex-1 truncate text-[0.85rem] ${
+                              assessmentModuleId === courseModule.id
+                                ? "font-medium text-foreground"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {courseModule.assessment.title}
+                          </span>
+                          <span className="shrink-0 text-[0.7rem] tabular-nums text-muted-foreground/70">
+                            {courseModule.assessment.questionCount}
+                          </span>
+                        </button>
+                      </li>
                     )}
                   </ul>
                 </div>

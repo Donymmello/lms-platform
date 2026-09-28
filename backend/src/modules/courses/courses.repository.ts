@@ -32,6 +32,10 @@ export const detailInclude = {
         orderBy: { order: "asc" },
         include: { materials: { orderBy: { createdAt: "asc" } } },
       },
+      // Title and question count only. The questions themselves never travel
+      // with a course, because this tree is served to students too and the
+      // options carry which one is correct.
+      assessment: { select: { title: true, _count: { select: { questions: true } } } },
     },
   },
 } satisfies Prisma.CourseInclude;
