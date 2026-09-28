@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, CreditCard, GraduationCap, PlayCircle } from "lucide-react";
 
 import { CourseTile } from "@/components/studio/course-tile";
+import { HomeCta } from "./home-cta";
 import { publicCoursesService } from "@/services/public-courses.service";
 import { CourseListItem } from "@/types/course";
 
@@ -59,12 +60,7 @@ export default async function HomePage() {
               Explorar catálogo
               <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link
-              href="/login"
-              className="focus-ring rounded-full border border-border px-6 py-3 text-sm font-medium transition-colors hover:border-primary/50"
-            >
-              Entrar
-            </Link>
+            <HomeCta />
           </div>
         </div>
       </section>
