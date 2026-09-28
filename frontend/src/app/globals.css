@@ -90,6 +90,46 @@
     /* Warm wash used behind the hero and the video stage. */
     --glow: 36 84% 58%;
   }
+
+  /*
+   * "Secretária" — the admin panel's own skin, and the one light surface in
+   * the product. It stays light on purpose: this is a place for reading
+   * tables and numbers in daylight, not for watching video.
+   *
+   * It is warm rather than the stock blue-grey, so it reads as the same
+   * product as the studio: paper and ink instead of slate. Amber survives
+   * only as the focus ring and for data, darkened to 45% lightness because
+   * the studio's 58% does not hold 3:1 against paper. Buttons use ink, not
+   * amber, for the same reason.
+   */
+  [data-theme="desk"] {
+    --background: 40 33% 98%;
+    --foreground: 30 12% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 30 12% 12%;
+
+    --primary: 30 12% 12%;
+    --primary-foreground: 40 33% 98%;
+
+    --secondary: 36 20% 94%;
+    --secondary-foreground: 30 12% 18%;
+
+    --muted: 36 20% 94%;
+    --muted-foreground: 30 8% 40%;
+
+    --destructive: 0 72% 42%;
+    --destructive-foreground: 40 33% 98%;
+
+    --border: 34 16% 88%;
+    --input: 34 16% 88%;
+    --ring: 36 84% 42%;
+
+    --radius: 0.75rem;
+
+    --elevated: 36 24% 96%;
+    --glow: 36 84% 48%;
+  }
 }
 
 @layer base {
@@ -112,6 +152,15 @@
    */
   body:has([data-theme="studio"]) {
     background-color: hsl(30 9% 5%);
+  }
+
+  [data-theme="desk"] {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  body:has([data-theme="desk"]) {
+    background-color: hsl(40 33% 98%);
   }
 
   /*

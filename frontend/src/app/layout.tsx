@@ -15,7 +15,7 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "LMS Platform",
+  title: "Estúdio",
   description: "Plataforma de cursos online",
 };
 

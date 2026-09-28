@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
-  title: "Entrar | LMS Platform",
+  title: "Entrar | Estúdio",
 };
 
 export default function LoginPage() {

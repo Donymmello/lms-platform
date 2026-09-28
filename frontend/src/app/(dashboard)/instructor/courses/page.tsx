@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { CoursesManager } from "@/components/courses/course-management";
 
 export const metadata: Metadata = {
-  title: "Os meus cursos | LMS Platform",
+  title: "Os meus cursos | Estúdio",
 };
 
 export default function InstructorCoursesPage() {

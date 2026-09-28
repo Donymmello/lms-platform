@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { AnalyticsDashboard } from "@/components/courses/analytics-dashboard";
 
 export const metadata: Metadata = {
-  title: "Painel de administração | LMS Platform",
+  title: "Painel de administração | Estúdio",
 };
 
 export default function AdminDashboardPage() {
