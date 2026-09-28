@@ -128,6 +128,8 @@ export function ModuleAssessment({ moduleId }: { moduleId: string }) {
 
       {result && (
         <div
+          role="status"
+          aria-live="polite"
           className={`rounded-xl border p-4 ${
             result.passed
               ? "border-primary/40 bg-primary/10"
@@ -144,7 +146,7 @@ export function ModuleAssessment({ moduleId }: { moduleId: string }) {
           <button
             type="button"
             onClick={handleRetry}
-            className="mt-3 inline-flex items-center gap-2 rounded-full border border-border px-4 py-1.5 text-sm transition-colors hover:border-primary/50"
+            className="focus-ring mt-3 inline-flex min-h-11 items-center gap-2 rounded-full border border-border px-4 py-2 text-sm transition-colors hover:border-primary/50"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             Tentar de novo
@@ -167,12 +169,17 @@ export function ModuleAssessment({ moduleId }: { moduleId: string }) {
                     <p className="text-xs text-muted-foreground">Selecciona todas as que se aplicam.</p>
                   )}
                 </div>
-                {verdict &&
-                  (verdict.correct ? (
-                    <Check className="ml-auto h-4 w-4 shrink-0 text-primary" />
-                  ) : (
-                    <X className="ml-auto h-4 w-4 shrink-0 text-destructive" />
-                  ))}
+                {verdict && (
+                  <span className="ml-auto shrink-0">
+                    {verdict.correct ? (
+                      <Check className="h-4 w-4 text-primary" />
+                    ) : (
+                      <X className="h-4 w-4 text-destructive" />
+                    )}
+                    {/* The tick and cross are the only thing marking a verdict; without this a screen reader hears nothing. */}
+                    <span className="sr-only">{verdict.correct ? "Correcta" : "Errada"}</span>
+                  </span>
+                )}
               </div>
 
               <div className="space-y-1.5 pl-5">
@@ -184,7 +191,7 @@ export function ModuleAssessment({ moduleId }: { moduleId: string }) {
                   return (
                     <label
                       key={option.id}
-                      className={`flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                      className={`flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background ${
                         verdict
                           ? isAnswer
                             ? "border-primary/50 bg-primary/10"
@@ -206,7 +213,10 @@ export function ModuleAssessment({ moduleId }: { moduleId: string }) {
                       />
                       <span>{option.text}</span>
                       {verdict && isAnswer && (
-                        <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-primary" />
+                        <span className="ml-auto shrink-0">
+                          <Check className="h-3.5 w-3.5 text-primary" />
+                          <span className="sr-only">Resposta correcta</span>
+                        </span>
                       )}
                     </label>
                   );
@@ -229,7 +239,7 @@ export function ModuleAssessment({ moduleId }: { moduleId: string }) {
             type="button"
             onClick={() => void handleSubmit()}
             disabled={isSubmitting || answeredCount === 0}
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground transition-transform hover:scale-[1.02] disabled:pointer-events-none disabled:opacity-50"
+            className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground transition-transform hover:scale-[1.02] disabled:pointer-events-none disabled:opacity-50"
           >
             {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
             Submeter

@@ -291,7 +291,7 @@ export function CourseLearnView({ slug }: CourseLearnViewProps) {
                       type="button"
                       disabled={isTogglingComplete}
                       onClick={handleToggleComplete}
-                      className={`inline-flex shrink-0 items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-all disabled:opacity-60 ${
+                      className={`focus-ring inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-all disabled:opacity-60 ${
                         isSelectedLessonComplete
                           ? "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
                           : "bg-primary text-primary-foreground hover:scale-[1.03]"
@@ -329,7 +329,7 @@ export function CourseLearnView({ slug }: CourseLearnViewProps) {
                           */}
                           <a
                             href={apiUrl(`/lessons/${selectedLesson.id}/materials/${material.id}`)}
-                            className="inline-flex items-center gap-2 rounded-lg border border-border/70 px-3 py-2 text-sm transition-colors hover:border-primary/50 hover:bg-secondary/40"
+                            className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-lg border border-border/70 px-3 py-2 text-sm transition-colors hover:border-primary/50 hover:bg-secondary/40"
                           >
                             <Download className="h-3.5 w-3.5 shrink-0 text-primary" />
                             <span className="truncate">{material.fileName}</span>
@@ -383,7 +383,7 @@ export function CourseLearnView({ slug }: CourseLearnViewProps) {
                                 setSelectedLessonId(lesson.id);
                               }}
                               aria-current={isActive ? "true" : undefined}
-                              className={`group relative flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                              className={`focus-ring group relative flex min-h-11 w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
                                 isActive ? "bg-primary/[0.09]" : "hover:bg-secondary/70"
                               }`}
                             >
@@ -439,7 +439,7 @@ export function CourseLearnView({ slug }: CourseLearnViewProps) {
                           type="button"
                           onClick={() => setAssessmentModuleId(courseModule.id)}
                           aria-current={assessmentModuleId === courseModule.id ? "true" : undefined}
-                          className={`group relative flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                          className={`focus-ring group relative flex min-h-11 w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
                             assessmentModuleId === courseModule.id
                               ? "bg-primary/[0.09]"
                               : "hover:bg-secondary/70"
@@ -552,7 +552,7 @@ function VideoPlayer({
         <p className="max-w-sm text-sm text-muted-foreground">{playback.message}</p>
         <Link
           href={`/courses/${courseSlug}`}
-          className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-transform hover:scale-[1.03]"
+          className="focus-ring inline-flex min-h-11 items-center rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-transform hover:scale-[1.03]"
         >
           Ver detalhes de inscrição
         </Link>
