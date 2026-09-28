@@ -13,7 +13,7 @@ import { UserNav } from "@/components/shared/user-nav";
  */
 export default function InstructorLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div data-theme="studio" className="min-h-screen bg-background text-foreground">
+    <div data-theme="studio" className="min-h-dvh bg-background text-foreground">
       <RoleGuard allow={["ADMIN", "INSTRUCTOR"]} />
 
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">

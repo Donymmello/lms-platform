@@ -5,7 +5,7 @@ import { UserNav } from "@/components/shared/user-nav";
 /** Account settings belong to everyone who has an account, whatever their role. */
 export default function SecurityLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div data-theme="studio" className="min-h-screen bg-background text-foreground">
+    <div data-theme="studio" className="min-h-dvh bg-background text-foreground">
       <RoleGuard allow={["ADMIN", "INSTRUCTOR", "STUDENT"]} />
 
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">

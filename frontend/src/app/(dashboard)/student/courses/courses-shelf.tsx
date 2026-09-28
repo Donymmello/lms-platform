@@ -38,7 +38,7 @@ function CourseCard({ entry, index }: { entry: Entry; index: number }) {
       style={{ "--i": index } as React.CSSProperties}
       className="rise group w-[15.5rem] shrink-0 outline-none sm:w-[17.5rem]"
     >
-      <article className="overflow-hidden rounded-xl border border-border bg-card transition-all duration-300 group-hover:-translate-y-1 group-hover:border-primary/40 group-focus-visible:border-primary">
+      <article className="focus-ring-group overflow-hidden rounded-xl border border-border bg-card transition-all duration-300 group-hover:-translate-y-1 group-hover:border-primary/40 group-focus-visible:border-primary">
         <div className="relative aspect-[16/10] overflow-hidden">
           <CourseCover
             slug={course.slug}

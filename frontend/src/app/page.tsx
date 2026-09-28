@@ -5,7 +5,7 @@ export default function HomePage() {
   return (
     <main
       data-theme="studio"
-      className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-6 text-center text-foreground"
+      className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-background px-6 text-center text-foreground"
     >
       <div className="pointer-events-none absolute -top-40 left-1/2 h-[30rem] w-[30rem] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
 

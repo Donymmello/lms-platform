@@ -20,7 +20,7 @@ function CourseTile({ course, index }: { course: CourseListItem; index: number }
       style={{ "--i": index } as React.CSSProperties}
       className="rise group outline-none"
     >
-      <article className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card transition-all duration-300 group-hover:-translate-y-1 group-hover:border-primary/40 group-focus-visible:border-primary">
+      <article className="focus-ring-group flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card transition-all duration-300 group-hover:-translate-y-1 group-hover:border-primary/40 group-focus-visible:border-primary">
         <div className="relative aspect-[16/10] overflow-hidden">
           <CourseCover
             slug={course.slug}
@@ -112,7 +112,7 @@ export function PublicCoursesList() {
           placeholder="Pesquisar cursos..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-12 w-full rounded-full border border-border bg-card pl-11 pr-4 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/60"
+          className="focus-ring h-12 w-full rounded-full border border-border bg-card pl-11 pr-4 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/60"
         />
       </div>
 

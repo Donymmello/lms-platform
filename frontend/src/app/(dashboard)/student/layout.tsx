@@ -9,7 +9,7 @@ import { UserNav } from "@/components/shared/user-nav";
  */
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div data-theme="studio" className="min-h-screen bg-background text-foreground">
+    <div data-theme="studio" className="min-h-dvh bg-background text-foreground">
       <RoleGuard allow={["ADMIN", "INSTRUCTOR", "STUDENT"]} />
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-shelf items-center justify-between gap-6 px-6 lg:px-10">

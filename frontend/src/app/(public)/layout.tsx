@@ -7,7 +7,7 @@ import { PublicNav } from "@/components/shared/public-nav";
  */
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div data-theme="studio" className="min-h-screen bg-background text-foreground">
+    <div data-theme="studio" className="min-h-dvh bg-background text-foreground">
       <PublicNav />
       <main className="relative z-10">{children}</main>
       <footer className="relative z-10 mt-20 border-t border-border/60">

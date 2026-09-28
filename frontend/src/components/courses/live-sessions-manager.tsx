@@ -89,7 +89,7 @@ export function LiveSessionsManager({ courseId }: { courseId: string }) {
   }
 
   const inputClass =
-    "h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/60";
+    "focus-ring h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/60";
 
   return (
     <div className="space-y-8">

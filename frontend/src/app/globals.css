@@ -149,6 +149,23 @@
 }
 
 @layer utilities {
+  /*
+   * One definition for the keyboard focus indicator.
+   *
+   * A 1px border colour change is visible but thin: WCAG 2.4.11 asks the
+   * indicator to have real area, and on a card the eye reads a ring far
+   * faster than a hairline. `ring-offset-background` keeps the halo legible
+   * against both the warm black and the light admin surface.
+   */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  /* Same, for a wrapper whose focus lands on the child that should show it. */
+  .focus-ring-group {
+    @apply group-focus-visible:ring-2 group-focus-visible:ring-ring group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-background;
+  }
+
   /* Staggered entrance for shelf cards; `--i` carries the index. */
   .rise {
     animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
