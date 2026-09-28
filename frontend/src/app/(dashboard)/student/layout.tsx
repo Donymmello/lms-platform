@@ -13,7 +13,14 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       <RoleGuard allow={["ADMIN", "INSTRUCTOR", "STUDENT"]} />
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-shelf items-center justify-between gap-6 px-6 lg:px-10">
-          <Link href="/student/courses" className="group flex items-baseline gap-2.5">
+          {/*
+            The wordmark goes to the site home, the same as it does on the
+            public nav and the auth screens. Pointing it at the area's own
+            home made it mean "stay here" on exactly the surfaces where
+            someone is most likely to want out, and each area already has
+            its own home in the nav beside it.
+          */}
+          <Link href="/" className="focus-ring group flex items-baseline gap-2.5 rounded-md">
             <span className="font-display text-2xl leading-none tracking-tight">Estúdio</span>
             <span className="hidden text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground transition-colors group-hover:text-primary sm:inline">
               Aprendizagem
