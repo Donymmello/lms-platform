@@ -435,9 +435,17 @@ function ModuleCard({
   return (
     <div className="rounded-lg border border-border p-4">
       <div className="flex items-center gap-2">
-        <div className="flex flex-col">
+        {/*
+          Reorder controls. 28px each rather than the 44px the guidelines ask
+          for: two stacked 44px targets are 88px tall, which does not fit a
+          compact editor row. This is a real improvement on the 12px icons
+          that were here, but on a phone reordering is still fiddly — the
+          proper fix is a drag handle, or folding these into an overflow menu
+          below tablet width, and that is its own piece of work.
+        */}
+        <div className="flex flex-col gap-0.5">
           <button
-            className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+            className="focus-ring grid h-7 w-7 place-items-center rounded text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
             disabled={isFirst || isBusy}
             onClick={() => handleMove("up")}
             aria-label="Mover módulo para cima"
@@ -445,7 +453,7 @@ function ModuleCard({
             <ArrowUp className="h-3.5 w-3.5" />
           </button>
           <button
-            className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+            className="focus-ring grid h-7 w-7 place-items-center rounded text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
             disabled={isLast || isBusy}
             onClick={() => handleMove("down")}
             aria-label="Mover módulo para baixo"
@@ -704,9 +712,9 @@ function LessonRow({
   return (
     <div className="rounded-md bg-secondary/40 px-2 py-1.5">
       <div className="flex items-center gap-2">
-      <div className="flex flex-col">
+      <div className="flex flex-col gap-0.5">
         <button
-          className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+          className="focus-ring grid h-7 w-7 place-items-center rounded text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
           disabled={isFirst || isBusy}
           onClick={() => handleMove("up")}
           aria-label="Mover aula para cima"
@@ -714,7 +722,7 @@ function LessonRow({
           <ArrowUp className="h-3 w-3" />
         </button>
         <button
-          className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+          className="focus-ring grid h-7 w-7 place-items-center rounded text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
           disabled={isLast || isBusy}
           onClick={() => handleMove("down")}
           aria-label="Mover aula para baixo"

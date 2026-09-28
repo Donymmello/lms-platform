@@ -303,7 +303,7 @@ export function AssessmentEditor({
                         })
                       }
                       aria-label={`Remover opção ${optionIndex + 1}`}
-                      className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary disabled:pointer-events-none disabled:opacity-30"
+                      className="focus-ring grid h-9 w-9 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-secondary disabled:pointer-events-none disabled:opacity-30"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
