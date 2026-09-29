@@ -132,16 +132,33 @@ services:
     depends_on:
       - backend
 
-  # The single origin the tunnel points at. Without this, serving the app and
-  # the API as two hostnames breaks the session cookies — see deploy/nginx.conf.
+  # The single origin everything is served from: the app at the root, the API
+  # under /api. See deploy/Caddyfile.
+  #
+  # Caddy rather than nginx because of one line of configuration: given a
+  # domain, it obtains and renews a Let's Encrypt certificate on its own. That
+  # matters more than it sounds — in production the session cookies are marked
+  # Secure, so without HTTPS nobody can sign in at all.
   proxy:
-    image: nginx:1.27-alpine
+    image: caddy:2-alpine
     container_name: lms_proxy
     restart: always
+    environment:
+      # A hostname turns on automatic HTTPS; ":8090" serves plain HTTP and
+      # asks for no certificate.
+      SITE_ADDRESS: ${SITE_ADDRESS:-:8090}
     ports:
+      # 80 and 443 are what a real domain needs; 80 also carries the ACME
+      # challenge, so it cannot be dropped. 8090 is the plain-HTTP mode.
+      - "80:80"
+      - "443:443"
       - "127.0.0.1:8090:8090"
     volumes:
-      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates live here. Without a volume, every restart asks Let's
+      # Encrypt for a new one and runs into their rate limit.
+      - caddy_data:/data
+      - caddy_config:/config
     depends_on:
       - frontend
       - backend
@@ -149,3 +166,5 @@ services:
 volumes:
   postgres_data:
   backend_uploads:
+  caddy_data:
+  caddy_config:

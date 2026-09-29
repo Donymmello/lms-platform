@@ -1,0 +1,27 @@
+# One origin in front of both services: the app at the root, the API under
+# /api. The browser only ever sees one scheme, host and port, which is what
+# keeps the SameSite=Lax session cookies working.
+#
+# SITE_ADDRESS decides whether this terminates TLS:
+#
+#   SITE_ADDRESS=demo.teudominio.com   -> automatic HTTPS from Let's Encrypt
+#   SITE_ADDRESS=:8090                 -> plain HTTP on 8090, no certificate
+#
+# The first is for a VPS with a domain pointed at it, and is the only mode
+# where signing in works: in production the session cookies are marked Secure,
+# so they are never sent over plain HTTP. The second exists for a tunnel,
+# which terminates TLS itself, and for looking at the production build locally.
+#
+# Nothing here caps the request body. Caddy streams uploads through by
+# default, so a 500MB lesson video arrives whole — unlike Cloudflare's proxy,
+# which cuts requests at 100MB on its free plans.
+
+{$SITE_ADDRESS} {
+	handle /api/* {
+		reverse_proxy backend:5000
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

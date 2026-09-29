@@ -28,80 +28,70 @@ O Prisma Client é regerado no arranque do container (ver o `CMD` em `backend/Do
 
 Uma coisa continua manual: **depois de adicionar uma dependência**, corre `docker compose exec backend npm install` (ou reconstrói a imagem). Instalar no arranque reescreveria o `package-lock.json` do host a cada vez.
 
-## Partilhar por túnel (Cloudflare)
+## Pôr numa VPS para o cliente ver
 
-Para mostrar isto a alguém de fora — um cliente, um teste em telefone real — expõe **um hostname só**, com o `/api` encaminhado para o backend. Dois hostnames separados parecem funcionar e não funcionam: os cookies de sessão são `SameSite=Lax`, e dois subdomínios de `trycloudflare.com` são domínios registáveis diferentes (está na Public Suffix List), pelo que o browser não envia o cookie. O login parece passar e a seguir estás deslogado, sem erro que o explique.
+Precisas de uma VPS com Docker e Compose, e de um subdomínio apontado ao IP dela. A stack traz um Caddy que tira e renova o certificado HTTPS sozinho.
 
-Com um hostname e encaminhamento por caminho, tudo é a mesma origem: os cookies funcionam sem configuração e o CORS deixa de ser relevante.
+**HTTPS não é opcional aqui.** Em produção os cookies de sessão são marcados `Secure`, logo só viajam por HTTPS — sobre HTTP puro ninguém consegue entrar, e o sintoma é o login parecer passar e o pedido seguinte vir anónimo.
 
-O encaminhamento está **dentro da stack**, não no túnel: a stack de produção traz um nginx em `127.0.0.1:8090` que serve a app na raiz e a API em `/api` (ver [`deploy/nginx.conf`](deploy/nginx.conf)). Assim funciona com qualquer túnel — incluindo um túnel rápido da Cloudflare, que aceita um `--url` só e não tem regras de `ingress`.
+**1.** No DNS, um registo `A` de `demo.teudominio.com` para o IP da VPS.
 
-Ordem das operações, porque o endereço é preciso **antes** do build:
+**2.** Na VPS, clona e entra:
 
 ```bash
-cloudflared tunnel --url http://localhost:8090
+git clone https://github.com/Donymmello/lms-platform.git && cd lms-platform
 ```
 
-Copia o `https://<palavras>.trycloudflare.com` que ele imprime, põe no `.env`, e constrói:
+**3.** Escreve o `.env`. Gera segredos próprios — os valores por omissão do `docker-compose.yml` estão publicados neste repositório, e com eles qualquer pessoa forja uma sessão de qualquer utilizador:
 
-```dotenv
-# O único sítio onde o endereço público aparece. Sem barra no fim.
-PUBLIC_ORIGIN=https://palavras-aleatorias.trycloudflare.com
+```bash
+printf 'PUBLIC_ORIGIN=https://demo.teudominio.com
+SITE_ADDRESS=demo.teudominio.com
 COOKIE_DOMAIN=
+POSTGRES_USER=lms_user
+POSTGRES_DB=lms_db
+POSTGRES_PASSWORD=%s
+JWT_ACCESS_SECRET=%s
+JWT_REFRESH_SECRET=%s
+TWO_FACTOR_ENCRYPTION_KEY=%s
+' "$(openssl rand -hex 16)" "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env
 ```
+
+**4.** Sobe:
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-Um hostname de túnel rápido **muda a cada arranque do `cloudflared`**, e cada mudança obriga a novo build, porque o endereço vai compilado no bundle do browser. Para mostrar isto mais de uma vez, vale a pena um túnel nomeado num domínio teu.
-
-### Antes de pôr isto num URL público
-
-- **Troca os segredos.** `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` e `TWO_FACTOR_ENCRYPTION_KEY` têm valores por omissão escritos neste repositório. Quem lê o repositório consegue forjar um token de sessão de qualquer utilizador. Gera novos no `.env`.
-- **Não encaminhes o Mailpit (8025).** Guarda todos os emails de recuperação de password, e os links dentro deles dão acesso a contas.
-- **Não encaminhes o Adminer (8080) nem o Postgres (5434).** São acesso directo à base de dados.
-
-Com o proxy, o backend e o frontend deixam de publicar portas no host: o nginx alcança-os pela rede do compose e mais nada os alcança.
-
-### Limite de upload através do túnel
-
-A Cloudflare corta o corpo de um pedido nos **100 MB** nos planos Free e Pro (200 MB no Business, 500 MB no Enterprise). O limite da aplicação para vídeos é 500 MB, logo um vídeo acima de 100 MB **falha com 413 através do túnel**, por muito que o nginx aceite.
-
-Carrega vídeos grandes com a stack de desenvolvimento em `localhost`, não pelo túnel.
-
-### Modo produção
-
-Para mostrar isto a um cliente, corre a stack compilada em vez do servidor de desenvolvimento: sem overlay de erros do Next, sem observadores de ficheiros, e muito mais rápido a navegar.
-
-O `docker-compose.prod.yml` usa-se **em vez** do `docker-compose.yml`, não como sobreposição. Os dois partilham projecto e volumes — a base de dados e os uploads mantêm-se — mas reclamam os mesmos nomes de container, pelo que só um corre de cada vez.
+**5.** Aplica as migrações:
 
 ```bash
-wsl -d Debian -- docker compose down
+docker compose -f docker-compose.prod.yml exec backend npx prisma migrate deploy
 ```
 
-```bash
-wsl -d Debian -- docker compose -f docker-compose.prod.yml up -d --build
-```
+E cria os dados de demonstração, se quiseres o catálogo preenchido — ver [Dados de demonstração](#dados-de-demonstração).
 
-Depois aplica as migrações (o CLI do Prisma está na imagem de produção):
+O Caddy pede o certificado no primeiro pedido ao domínio, o que leva alguns segundos. Se falhar, é quase sempre uma de duas coisas: o DNS ainda não propagou, ou a porta 80 está fechada na firewall — o desafio ACME passa por lá.
 
-```bash
-wsl -d Debian -- docker compose -f docker-compose.prod.yml exec backend npx prisma migrate deploy
-```
+### Correr o build de produção localmente
 
-Diferenças em relação ao desenvolvimento, todas intencionais:
+O mesmo ficheiro serve, com `SITE_ADDRESS=:8090` (o valor por omissão): o Caddy serve HTTP simples em `http://localhost:8090` e não pede certificado nenhum. Serve para ver o build compilado antes de subir — mas **o login não funciona**, pela razão dos cookies `Secure` acima.
 
-- O frontend serve um build compilado; o backend corre o `dist/` compilado.
-- O Adminer desaparece. O Mailpit fica, para o envio de email não falhar, mas **a caixa de entrada deixa de ser publicada** — guarda os links de recuperação de password.
-- O Postgres não publica porta nenhuma no host.
-- As portas da app ligam-se a `127.0.0.1`, logo só esta máquina as alcança. Basta para o `cloudflared`, que corre aqui, e deixa o resto da rede de fora.
-- Os segredos não têm valores por omissão: sem `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `TWO_FACTOR_ENCRYPTION_KEY`, `CORS_ORIGIN`, `PUBLIC_API_URL`, `PUBLIC_APP_URL` e `NEXT_PUBLIC_API_URL` no `.env`, a stack recusa arrancar em vez de subir com os segredos de desenvolvimento que estão neste repositório.
+### O que muda em produção
+
+O `docker-compose.prod.yml` usa-se **em vez** do `docker-compose.yml`, não como sobreposição. Os dois partilham projecto e volumes — base de dados e uploads mantêm-se — mas reclamam os mesmos nomes de container, pelo que só um corre de cada vez. Localmente, `docker compose down` antes de subir o de produção.
+
+- O frontend serve um build compilado; o backend corre o `dist/` compilado. Sem observadores de ficheiros, sem overlay de erros do Next à frente de um visitante.
+- Só o Caddy publica portas. O frontend, o backend e o Postgres ficam na rede do compose, alcançáveis pelo proxy e por mais nada.
+- O Adminer desaparece. O Mailpit fica, para o envio de email não falhar, mas **a caixa de entrada deixa de ser publicada** — guarda os links de recuperação de password, que são acesso a contas. Para a ler, publica a 8025 o tempo que precisares e volta atrás.
+- Os segredos não têm valores por omissão: sem `PUBLIC_ORIGIN`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` e `TWO_FACTOR_ENCRYPTION_KEY` no `.env`, a stack recusa arrancar em vez de subir com os de desenvolvimento, que estão publicados neste repositório.
 
 Duas coisas que surpreendem:
 
-- **`NEXT_PUBLIC_API_URL` é compilado no bundle do browser**, não lido no arranque. Mudá-lo exige `--build` outra vez, não basta reiniciar.
-- **Em produção os cookies de sessão são `Secure`**, logo só viajam por HTTPS. Abrir directamente `http://localhost:3000` parece quebrado no login — entra pelo endereço HTTPS do túnel.
+- **O endereço público é compilado no bundle do browser**, não lido no arranque. Mudar `PUBLIC_ORIGIN` exige `--build` outra vez; reiniciar não chega.
+- **Os cookies de sessão são `Secure`**, logo só viajam por HTTPS.
+
+Se puseres a Cloudflare à frente da VPS com o proxy ligado, conta com o corte dela ao corpo dos pedidos: **100 MB** nos planos Free e Pro. O limite da aplicação para vídeos é 500 MB, logo um vídeo acima de 100 MB falha com 413 antes de chegar à VPS. Ou carregas esses com o proxy desligado (DNS "grey cloud"), ou contra `localhost`.
 
 ## Migrations
 
