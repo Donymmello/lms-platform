@@ -34,33 +34,27 @@ Para mostrar isto a alguém de fora — um cliente, um teste em telefone real �
 
 Com um hostname e encaminhamento por caminho, tudo é a mesma origem: os cookies funcionam sem configuração e o CORS deixa de ser relevante.
 
-`~/.cloudflared/config.yml`:
+O encaminhamento está **dentro da stack**, não no túnel: a stack de produção traz um nginx em `127.0.0.1:8090` que serve a app na raiz e a API em `/api` (ver [`deploy/nginx.conf`](deploy/nginx.conf)). Assim funciona com qualquer túnel — incluindo um túnel rápido da Cloudflare, que aceita um `--url` só e não tem regras de `ingress`.
 
-```yaml
-tunnel: <id-do-tunel>
-credentials-file: /root/.cloudflared/<id-do-tunel>.json
+Ordem das operações, porque o endereço é preciso **antes** do build:
 
-ingress:
-  # A ordem importa: a regra de /api tem de vir antes da geral.
-  - hostname: demo.exemplo.com
-    path: ^/api/.*
-    service: http://localhost:5000
-  - hostname: demo.exemplo.com
-    service: http://localhost:3000
-  - service: http_status:404
+```bash
+cloudflared tunnel --url http://localhost:8090
 ```
 
-E no `.env` na raiz:
+Copia o `https://<palavras>.trycloudflare.com` que ele imprime, põe no `.env`, e constrói:
 
 ```dotenv
-# Vai compilado no bundle do browser: tem de ser o endereço público.
-NEXT_PUBLIC_API_URL=https://demo.exemplo.com/api/v1
-CORS_ORIGIN=https://demo.exemplo.com
-PUBLIC_APP_URL=https://demo.exemplo.com
-PUBLIC_API_URL=https://demo.exemplo.com
+# O único sítio onde o endereço público aparece. Sem barra no fim.
+PUBLIC_ORIGIN=https://palavras-aleatorias.trycloudflare.com
+COOKIE_DOMAIN=
 ```
 
-Depois `docker compose up -d` para os containers relerem o ambiente. `COOKIE_DOMAIN` fica vazio — com um hostname único, um cookie ligado ao host é o correcto.
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Um hostname de túnel rápido **muda a cada arranque do `cloudflared`**, e cada mudança obriga a novo build, porque o endereço vai compilado no bundle do browser. Para mostrar isto mais de uma vez, vale a pena um túnel nomeado num domínio teu.
 
 ### Antes de pôr isto num URL público
 
@@ -68,7 +62,13 @@ Depois `docker compose up -d` para os containers relerem o ambiente. `COOKIE_DOM
 - **Não encaminhes o Mailpit (8025).** Guarda todos os emails de recuperação de password, e os links dentro deles dão acesso a contas.
 - **Não encaminhes o Adminer (8080) nem o Postgres (5434).** São acesso directo à base de dados.
 
-O túnel só expõe o que declaras no `ingress` — o risco é acrescentar-se por conveniência.
+Com o proxy, o backend e o frontend deixam de publicar portas no host: o nginx alcança-os pela rede do compose e mais nada os alcança.
+
+### Limite de upload através do túnel
+
+A Cloudflare corta o corpo de um pedido nos **100 MB** nos planos Free e Pro (200 MB no Business, 500 MB no Enterprise). O limite da aplicação para vídeos é 500 MB, logo um vídeo acima de 100 MB **falha com 413 através do túnel**, por muito que o nginx aceite.
+
+Carrega vídeos grandes com a stack de desenvolvimento em `localhost`, não pelo túnel.
 
 ### Modo produção
 
