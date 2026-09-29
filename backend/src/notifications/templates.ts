@@ -17,13 +17,13 @@ function layout(heading: string, bodyHtml: string, cta?: { label: string; url: s
 <html lang="pt">
   <body style="margin:0;padding:24px;background:#f5f3f0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1a1713">
     <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;padding:32px">
-      <p style="margin:0 0 24px;font-size:20px;font-weight:700;letter-spacing:-0.01em">Estúdio</p>
+      <p style="margin:0 0 24px;font-size:20px;font-weight:700;letter-spacing:-0.01em">LMS</p>
       <h1 style="margin:0 0 16px;font-size:22px;line-height:1.3">${heading}</h1>
       ${bodyHtml}
       ${button}
     </div>
     <p style="max-width:520px;margin:16px auto 0;font-size:12px;color:#8a8279;text-align:center">
-      Recebeste este email porque tens conta no Estúdio.
+      Recebeste este email porque tens conta no LMS.
     </p>
   </body>
 </html>`;
@@ -42,14 +42,14 @@ export interface RenderedEmail {
 export function welcomeEmail(name: string): RenderedEmail {
   const url = `${env.PUBLIC_APP_URL}/courses`;
   return {
-    subject: "Bem-vindo ao Estúdio",
+    subject: "Bem-vindo ao LMS",
     html: layout(
       `Olá, ${name}`,
       paragraph("A tua conta está criada. Explora o catálogo e inscreve-te no primeiro curso.") +
         paragraph("Os cursos em que te inscreveres ficam disponíveis em «Os meus cursos», com o teu progresso guardado."),
       { label: "Explorar catálogo", url }
     ),
-    text: `Olá, ${name}\n\nA tua conta no Estúdio está criada. Explora o catálogo em ${url}`,
+    text: `Olá, ${name}\n\nA tua conta no LMS está criada. Explora o catálogo em ${url}`,
   };
 }
 

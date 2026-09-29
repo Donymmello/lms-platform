@@ -77,7 +77,7 @@ const envSchema = z.object({
     .string()
     .default("false")
     .transform((value) => value.trim().toLowerCase() === "true"),
-  MAIL_FROM: z.string().default("Estúdio <nao-responder@localhost>"),
+  MAIL_FROM: z.string().default("LMS <nao-responder@localhost>"),
 
   // --- Local video storage (fallback when Bunny is not configured) ---
   // Where lesson videos are kept when there is no CDN. Should be a mounted

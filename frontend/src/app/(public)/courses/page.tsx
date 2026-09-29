@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PublicCoursesList } from "./public-courses-list";
 
 export const metadata: Metadata = {
-  title: "Catálogo | Estúdio",
+  title: "Catálogo | LMS",
 };
 
 export default function PublicCoursesPage() {
@@ -15,7 +15,7 @@ export default function PublicCoursesPage() {
           Escolhe o que queres <em className="italic text-primary">dominar</em>
         </h1>
         <p className="relative mt-4 text-sm leading-relaxed text-muted-foreground">
-          Inscreve-te num curso e ele passa a viver no teu estúdio, com o teu progresso guardado.
+          Inscreve-te num curso e ele fica na tua área, com o progresso guardado.
         </p>
       </header>
 

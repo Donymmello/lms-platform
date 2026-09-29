@@ -13,7 +13,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="pointer-events-none absolute -top-32 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
 
       <Link href="/" className="relative z-10 mb-8 flex items-baseline gap-2.5">
-        <span className="font-display text-3xl leading-none tracking-tight">Estúdio</span>
+        <span className="font-display text-3xl leading-none tracking-tight">LMS</span>
         <span className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">
           Aprendizagem
         </span>

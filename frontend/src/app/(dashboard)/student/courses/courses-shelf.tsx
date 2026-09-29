@@ -270,7 +270,7 @@ export function CoursesShelf() {
     return (
       <div className="flex items-center justify-center gap-3 py-28 text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin" />
-        <span className="text-sm">A preparar o teu estúdio...</span>
+        <span className="text-sm">A preparar a tua área...</span>
       </div>
     );
   }
@@ -280,7 +280,7 @@ export function CoursesShelf() {
       <div className="relative overflow-hidden rounded-2xl border border-dashed border-border px-8 py-20 text-center">
         <div className="absolute left-1/2 top-0 h-56 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-3xl" />
         <div className="relative space-y-4">
-          <h2 className="font-display text-4xl tracking-tight">O estúdio está vazio</h2>
+          <h2 className="font-display text-4xl tracking-tight">Ainda não tens cursos</h2>
           <p className="mx-auto max-w-sm text-sm text-muted-foreground">
             Ainda não estás inscrito em nenhum curso. Escolhe um no catálogo e ele aparece aqui.
           </p>

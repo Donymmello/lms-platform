@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { UsersTable } from "./users-table";
 
 export const metadata: Metadata = {
-  title: "Utilizadores | Estúdio",
+  title: "Utilizadores | LMS",
 };
 
 export default function AdminUsersPage() {

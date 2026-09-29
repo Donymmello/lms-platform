@@ -31,7 +31,7 @@ function formatPrice(cents: number): string {
 export async function generateMetadata({ params }: CourseDetailPageProps): Promise<Metadata> {
   const course = await getCourse(params.slug);
   return {
-    title: course ? `${course.title} | Estúdio` : "Curso não encontrado | Estúdio",
+    title: course ? `${course.title} | LMS` : "Curso não encontrado | LMS",
   };
 }
 

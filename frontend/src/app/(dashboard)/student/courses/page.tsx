@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { CoursesShelf } from "./courses-shelf";
 
 export const metadata: Metadata = {
-  title: "Os meus cursos | Estúdio",
+  title: "Os meus cursos | LMS",
 };
 
 export default function StudentCoursesPage() {

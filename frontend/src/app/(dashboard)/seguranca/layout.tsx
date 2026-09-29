@@ -11,7 +11,7 @@ export default function SecurityLayout({ children }: { children: React.ReactNode
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-shelf items-center justify-between gap-6 px-6 lg:px-10">
           <Link href="/" className="font-display text-2xl leading-none tracking-tight">
-            Estúdio
+            LMS
           </Link>
           <UserNav />
         </div>

@@ -89,7 +89,7 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_SECURE: ${SMTP_SECURE:-false}
-      MAIL_FROM: ${MAIL_FROM:-Estúdio <nao-responder@localhost>}
+      MAIL_FROM: ${MAIL_FROM:-LMS <nao-responder@localhost>}
       PAYSUITE_BASE_URL: ${PAYSUITE_BASE_URL:-https://paysuite.tech/api/v1}
       PAYSUITE_API_KEY: ${PAYSUITE_API_KEY:-}
       PAYSUITE_WEBHOOK_SECRET: ${PAYSUITE_WEBHOOK_SECRET:-}

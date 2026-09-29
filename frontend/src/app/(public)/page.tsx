@@ -44,7 +44,7 @@ export default async function HomePage() {
           </p>
 
           <h1 className="mt-4 font-display text-5xl leading-[1.04] tracking-tight sm:text-6xl lg:text-7xl">
-            O teu <em className="italic text-primary">estúdio</em> de aprendizagem
+            Aprende o que <em className="italic text-primary">precisas</em>
           </h1>
 
           <p className="mx-auto mt-5 max-w-md text-sm leading-relaxed text-muted-foreground">

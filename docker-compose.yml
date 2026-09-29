@@ -82,7 +82,7 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_SECURE: ${SMTP_SECURE:-false}
-      MAIL_FROM: ${MAIL_FROM:-Estúdio <nao-responder@localhost>}
+      MAIL_FROM: ${MAIL_FROM:-LMS <nao-responder@localhost>}
       COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
       # Used to build absolute return/webhook URLs handed to payment
       # gateways. PUBLIC_API_URL in particular must be reachable from the

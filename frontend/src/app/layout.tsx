@@ -36,7 +36,7 @@ const instrumentSerif = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Estúdio",
+  title: "LMS",
   description: "Plataforma de cursos online",
 };
 

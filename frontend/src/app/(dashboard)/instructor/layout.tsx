@@ -26,7 +26,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
             its own home in the nav beside it.
           */}
           <Link href="/" className="focus-ring group flex items-baseline gap-2.5 rounded-md">
-            <span className="font-display text-2xl leading-none tracking-tight">Estúdio</span>
+            <span className="font-display text-2xl leading-none tracking-tight">LMS</span>
             <span className="hidden text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground transition-colors group-hover:text-primary sm:inline">
               Instrutor
             </span>

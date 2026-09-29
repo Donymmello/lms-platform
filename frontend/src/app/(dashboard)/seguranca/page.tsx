@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { TwoFactorPanel } from "./two-factor-panel";
 
 export const metadata: Metadata = {
-  title: "Segurança | Estúdio",
+  title: "Segurança | LMS",
 };
 
 export default function SecurityPage() {

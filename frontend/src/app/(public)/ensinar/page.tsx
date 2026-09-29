@@ -3,7 +3,7 @@ import { BarChart3, PlayCircle, Wallet } from "lucide-react";
 import { BecomeInstructorCta } from "./become-instructor-cta";
 
 export const metadata: Metadata = {
-  title: "Ensinar na plataforma | Estúdio",
+  title: "Ensinar na plataforma | LMS",
 };
 
 const STEPS = [
