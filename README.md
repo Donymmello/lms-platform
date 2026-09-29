@@ -107,7 +107,7 @@ A área do aluno só mostra alguma coisa se houver inscrições e progresso. Par
 docker exec lms_backend npm run seed:demo
 ```
 
-Tudo o que cria leva um id começado em `5eed`, e o `--clean` remove exatamente isso e nada mais:
+Tudo o que cria leva um id começado em `5eed`, e o `--clean` remove exactamente isso e nada mais:
 
 ```bash
 docker exec lms_backend npm run seed:demo -- --clean
@@ -190,7 +190,7 @@ Gera uma chave com:
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-Com a chave vazia ninguém consegue ativar o 2FA, mas quem já o tem continua a entrar. O compose traz uma chave de desenvolvimento. **Gera outra para qualquer implantação real.**
+Com a chave vazia ninguém consegue activar o 2FA, mas quem já o tem continua a entrar. O compose traz uma chave de desenvolvimento. **Gera outra para qualquer implantação real.**
 
 ## Testes
 
@@ -214,7 +214,7 @@ Correr a suite:
 docker exec lms_backend npm test
 ```
 
-Cobertura atual, 264 testes: autenticação, 2FA e rate limiting, recuperação de password, cursos/módulos/aulas (CRUD e ownership), materiais de aula (upload, allowlist, download com acesso verificado), avaliações de módulo (correcção, tentativas, e o gabarito que nunca chega ao aluno), inscrições, pagamentos (checkout, webhooks, captura PayPal), playback assinado, vídeo local (streaming com Range e validação do ficheiro), progresso de aulas (manual e por posição do player) e analytics.
+Cobertura actual, 264 testes: autenticação, 2FA e rate limiting, recuperação de password, cursos/módulos/aulas (CRUD e ownership), materiais de aula (upload, allowlist, download com acesso verificado), avaliações de módulo (correcção, tentativas, e o gabarito que nunca chega ao aluno), inscrições, pagamentos (checkout, webhooks, captura PayPal), playback assinado, vídeo local (streaming com Range e validação do ficheiro), progresso de aulas (manual e por posição do player) e analytics.
 
 Os gateways de pagamento (PaySuite, PayPal) são substituídos por um mock **apenas na fronteira do adaptador**. Tudo abaixo disso corre a sério: criação da linha de pagamento, desbloqueio da inscrição, idempotência de entregas repetidas, rejeição de assinatura inválida.
 

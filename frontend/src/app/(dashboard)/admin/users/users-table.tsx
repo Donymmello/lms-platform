@@ -84,14 +84,14 @@ export function UsersTable() {
       const updated = await withPending(target.id, () => usersService.updateRole(target.id, role));
       patchUserInPlace(updated);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Não foi possível atualizar a função.");
+      setError(err instanceof ApiError ? err.message : "Não foi possível actualizar a função.");
     }
   }
 
   async function handleToggleStatus(target: AdminUser) {
     if (target.isActive) {
       const confirmed = window.confirm(
-        `Desativar a conta de ${target.name}? A pessoa perde o acesso imediatamente.`
+        `Desactivar a conta de ${target.name}? A pessoa perde o acesso imediatamente.`
       );
       if (!confirmed) return;
     }
@@ -102,7 +102,7 @@ export function UsersTable() {
       );
       patchUserInPlace(updated);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Não foi possível atualizar o estado da conta.");
+      setError(err instanceof ApiError ? err.message : "Não foi possível actualizar o estado da conta.");
     }
   }
 
@@ -204,7 +204,7 @@ export function UsersTable() {
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant={rowUser.isActive ? "success" : "destructive"}>
-                        {rowUser.isActive ? "Ativo" : "Desativado"}
+                        {rowUser.isActive ? "Activo" : "Desactivado"}
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{formatDate(rowUser.createdAt)}</td>
@@ -216,7 +216,7 @@ export function UsersTable() {
                         onClick={() => handleToggleStatus(rowUser)}
                       >
                         {isPending && <Loader2 className="h-3 w-3 animate-spin" />}
-                        {rowUser.isActive ? "Desativar" : "Ativar"}
+                        {rowUser.isActive ? "Desactivar" : "Activar"}
                       </Button>
                     </td>
                   </tr>

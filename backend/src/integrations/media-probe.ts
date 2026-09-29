@@ -137,7 +137,7 @@ export function rejectionReason(probe: ProbeResult): string | null {
   if (!videoTrack) {
     const soundOnly = probe.tracks.some((track) => track.handler === "soun");
     return soundOnly
-      ? "Este ficheiro só tem áudio — não traz imagem nenhuma. Verifica o que exportaste."
+      ? "Este ficheiro só tem áudio, não traz imagem nenhuma. Verifica o que exportaste."
       : "Não foi encontrada nenhuma faixa de vídeo neste ficheiro.";
   }
 

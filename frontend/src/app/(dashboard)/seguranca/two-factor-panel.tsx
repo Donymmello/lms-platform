@@ -126,7 +126,7 @@ export function TwoFactorPanel() {
                 const codes = await authService.confirmTwoFactorSetup(code);
                 setCode("");
                 setStage({ name: "saved", codes });
-              }, "Não foi possível ativar a verificação em dois passos.")
+              }, "Não foi possível activar a verificação em dois passos.")
             }
           >
             {isBusy && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -180,7 +180,7 @@ export function TwoFactorPanel() {
 
         <details className="rounded-xl border border-border p-4">
           <summary className="cursor-pointer text-sm text-muted-foreground">
-            Já tenho ativa e quero desligar
+            Já tenho activa e quero desligar
           </summary>
 
           <div className="mt-4 space-y-3">
@@ -209,7 +209,7 @@ export function TwoFactorPanel() {
             {/* Both are required: knowing only one is the case 2FA exists for. */}
             <ConfirmButton
               disabled={isBusy}
-              confirmLabel="Confirmar desativação?"
+              confirmLabel="Confirmar desactivação?"
               className="inline-flex h-10 w-full items-center justify-center rounded-md border border-border text-sm font-medium transition-colors hover:border-destructive/50"
               armedClassName="bg-destructive/10 text-destructive"
               onConfirm={() =>
@@ -217,10 +217,10 @@ export function TwoFactorPanel() {
                   await authService.disableTwoFactor(password, code);
                   setPassword("");
                   setCode("");
-                }, "Não foi possível desativar.")
+                }, "Não foi possível desactivar.")
               }
             >
-              Desativar
+              Desactivar
             </ConfirmButton>
           </div>
         </details>

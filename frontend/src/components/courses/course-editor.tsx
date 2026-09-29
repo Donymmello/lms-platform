@@ -84,7 +84,7 @@ export function CourseEditor({ courseId, basePath }: CourseEditorProps) {
       const nextStatus = course.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED";
       setCourse(await coursesService.updateStatus(courseId, nextStatus));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Não foi possível atualizar o estado.");
+      setError(err instanceof ApiError ? err.message : "Não foi possível actualizar o estado.");
     } finally {
       setIsTogglingStatus(false);
     }
@@ -602,7 +602,7 @@ function LessonRow({
         })
       );
     } catch (err) {
-      handleApiError(err, "Não foi possível atualizar a aula.");
+      handleApiError(err, "Não foi possível actualizar a aula.");
     } finally {
       setIsBusy(false);
     }

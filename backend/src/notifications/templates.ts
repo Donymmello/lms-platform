@@ -62,7 +62,7 @@ export function passwordResetEmail(name: string, rawToken: string): RenderedEmai
       paragraph(`Olá, ${name}. Recebemos um pedido para redefinir a palavra-passe da tua conta.`) +
         paragraph("O link abaixo só funciona uma vez e expira dentro de uma hora.") +
         paragraph(
-          "Se não foste tu a pedir, ignora este email — a tua palavra-passe atual continua a funcionar."
+          "Se não foste tu a pedir, ignora este email. A tua palavra-passe actual continua a funcionar."
         ),
       { label: "Definir nova palavra-passe", url }
     ),
@@ -81,7 +81,7 @@ export function enrollmentEmail(name: string, courseTitle: string, courseSlug: s
     html: layout(
       `Inscrição confirmada`,
       paragraph(`Olá, ${name}. A tua inscrição em <strong>${courseTitle}</strong> está confirmada.`) +
-        paragraph("Podes começar quando quiseres — o teu progresso fica guardado entre sessões."),
+        paragraph("Podes começar quando quiseres. O teu progresso fica guardado entre sessões."),
       { label: "Começar o curso", url }
     ),
     text: `Olá, ${name}\n\nEstás inscrito em ${courseTitle}. Começa em ${url}`,

@@ -32,7 +32,7 @@ export function BecomeInstructorCta() {
     } catch (caught) {
       setIsSubmitting(false);
       setError(
-        caught instanceof ApiError ? caught.message : "Não foi possível ativar a tua conta de instrutor."
+        caught instanceof ApiError ? caught.message : "Não foi possível activar a tua conta de instrutor."
       );
     }
   }
