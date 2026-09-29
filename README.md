@@ -28,6 +28,48 @@ O Prisma Client é regerado no arranque do container (ver o `CMD` em `backend/Do
 
 Uma coisa continua manual: **depois de adicionar uma dependência**, corre `docker compose exec backend npm install` (ou reconstrói a imagem). Instalar no arranque reescreveria o `package-lock.json` do host a cada vez.
 
+## Partilhar por túnel (Cloudflare)
+
+Para mostrar isto a alguém de fora — um cliente, um teste em telefone real — expõe **um hostname só**, com o `/api` encaminhado para o backend. Dois hostnames separados parecem funcionar e não funcionam: os cookies de sessão são `SameSite=Lax`, e dois subdomínios de `trycloudflare.com` são domínios registáveis diferentes (está na Public Suffix List), pelo que o browser não envia o cookie. O login parece passar e a seguir estás deslogado, sem erro que o explique.
+
+Com um hostname e encaminhamento por caminho, tudo é a mesma origem: os cookies funcionam sem configuração e o CORS deixa de ser relevante.
+
+`~/.cloudflared/config.yml`:
+
+```yaml
+tunnel: <id-do-tunel>
+credentials-file: /root/.cloudflared/<id-do-tunel>.json
+
+ingress:
+  # A ordem importa: a regra de /api tem de vir antes da geral.
+  - hostname: demo.exemplo.com
+    path: ^/api/.*
+    service: http://localhost:5000
+  - hostname: demo.exemplo.com
+    service: http://localhost:3000
+  - service: http_status:404
+```
+
+E no `.env` na raiz:
+
+```dotenv
+# Vai compilado no bundle do browser: tem de ser o endereço público.
+NEXT_PUBLIC_API_URL=https://demo.exemplo.com/api/v1
+CORS_ORIGIN=https://demo.exemplo.com
+PUBLIC_APP_URL=https://demo.exemplo.com
+PUBLIC_API_URL=https://demo.exemplo.com
+```
+
+Depois `docker compose up -d` para os containers relerem o ambiente. `COOKIE_DOMAIN` fica vazio — com um hostname único, um cookie ligado ao host é o correcto.
+
+### Antes de pôr isto num URL público
+
+- **Troca os segredos.** `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` e `TWO_FACTOR_ENCRYPTION_KEY` têm valores por omissão escritos neste repositório. Quem lê o repositório consegue forjar um token de sessão de qualquer utilizador. Gera novos no `.env`.
+- **Não encaminhes o Mailpit (8025).** Guarda todos os emails de recuperação de password, e os links dentro deles dão acesso a contas.
+- **Não encaminhes o Adminer (8080) nem o Postgres (5434).** São acesso directo à base de dados.
+
+O túnel só expõe o que declaras no `ingress` — o risco é acrescentar-se por conveniência.
+
 ## Migrations
 
 ```bash

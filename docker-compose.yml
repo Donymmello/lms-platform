@@ -130,7 +130,11 @@ services:
       # into the container: without polling, webpack never learns a file changed
       # and keeps serving whatever it compiled at startup.
       WATCHPACK_POLLING: "true"
-      NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
+      # Compiled into the browser bundle, so it has to be an address the
+      # *visitor's* browser can reach — not one that only resolves on this
+      # machine. Behind a tunnel, set NEXT_PUBLIC_API_URL in .env to the
+      # public origin plus /api/v1.
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api/v1}
       # Used only for server-side fetches (Server Components,
       # generateMetadata). Inside Docker, `localhost` from the frontend
       # container is the frontend container itself — the backend is only
