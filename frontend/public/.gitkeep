@@ -1,0 +1,4 @@
+# Next.js serves anything here at the site root (favicon.ico, robots.txt,
+# images). It is empty for now — the fonts live in src/app/fonts so that
+# next/font can hash and preload them — but the production Dockerfile copies
+# this directory, so it has to exist or the image fails to build.

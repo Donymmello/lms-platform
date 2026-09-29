@@ -70,6 +70,39 @@ Depois `docker compose up -d` para os containers relerem o ambiente. `COOKIE_DOM
 
 O túnel só expõe o que declaras no `ingress` — o risco é acrescentar-se por conveniência.
 
+### Modo produção
+
+Para mostrar isto a um cliente, corre a stack compilada em vez do servidor de desenvolvimento: sem overlay de erros do Next, sem observadores de ficheiros, e muito mais rápido a navegar.
+
+O `docker-compose.prod.yml` usa-se **em vez** do `docker-compose.yml`, não como sobreposição. Os dois partilham projecto e volumes — a base de dados e os uploads mantêm-se — mas reclamam os mesmos nomes de container, pelo que só um corre de cada vez.
+
+```bash
+wsl -d Debian -- docker compose down
+```
+
+```bash
+wsl -d Debian -- docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Depois aplica as migrações (o CLI do Prisma está na imagem de produção):
+
+```bash
+wsl -d Debian -- docker compose -f docker-compose.prod.yml exec backend npx prisma migrate deploy
+```
+
+Diferenças em relação ao desenvolvimento, todas intencionais:
+
+- O frontend serve um build compilado; o backend corre o `dist/` compilado.
+- O Adminer desaparece. O Mailpit fica, para o envio de email não falhar, mas **a caixa de entrada deixa de ser publicada** — guarda os links de recuperação de password.
+- O Postgres não publica porta nenhuma no host.
+- As portas da app ligam-se a `127.0.0.1`, logo só esta máquina as alcança. Basta para o `cloudflared`, que corre aqui, e deixa o resto da rede de fora.
+- Os segredos não têm valores por omissão: sem `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `TWO_FACTOR_ENCRYPTION_KEY`, `CORS_ORIGIN`, `PUBLIC_API_URL`, `PUBLIC_APP_URL` e `NEXT_PUBLIC_API_URL` no `.env`, a stack recusa arrancar em vez de subir com os segredos de desenvolvimento que estão neste repositório.
+
+Duas coisas que surpreendem:
+
+- **`NEXT_PUBLIC_API_URL` é compilado no bundle do browser**, não lido no arranque. Mudá-lo exige `--build` outra vez, não basta reiniciar.
+- **Em produção os cookies de sessão são `Secure`**, logo só viajam por HTTPS. Abrir directamente `http://localhost:3000` parece quebrado no login — entra pelo endereço HTTPS do túnel.
+
 ## Migrations
 
 ```bash

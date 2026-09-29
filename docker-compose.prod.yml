@@ -1,0 +1,136 @@
+# Production-mode stack, for showing this to someone outside the machine.
+#
+# Use it *instead of* docker-compose.yml, not as an override:
+#
+#   docker compose down
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Both files use the same project and the same named volumes, so the database
+# and the uploads carry over — but they claim the same container names, so only
+# one of the two can run at a time.
+#
+# Differences from the dev stack, all deliberate:
+#
+#   * The frontend serves a compiled build instead of `next dev`. No source is
+#     bind-mounted, no file watching, no error overlay shown to a visitor.
+#   * The backend runs the compiled `dist/`, not ts-node-dev.
+#   * Adminer is gone. Mailpit stays so sending mail does not error, but its
+#     inbox is no longer published — it holds every password-reset link.
+#   * Postgres publishes no host port at all.
+#   * The app ports bind to 127.0.0.1, so only this machine can reach them.
+#     That is enough for cloudflared, which runs here, and it keeps the rest
+#     of the network out.
+#
+# Two things to know before starting it:
+#
+#   * NEXT_PUBLIC_API_URL is baked into the browser bundle at build time, so
+#     changing it means `--build` again, not just a restart.
+#   * In production the session cookies are marked Secure, so they only travel
+#     over HTTPS. Reaching this straight on http://localhost:3000 will look
+#     broken at login — go in through the tunnel's HTTPS address.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lms_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lms_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lms_password}
+      POSTGRES_DB: ${POSTGRES_DB:-lms_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lms_user} -d ${POSTGRES_DB:-lms_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Kept only so mail-sending code has somewhere to connect. The UI port is
+  # deliberately not published: the inbox holds password-reset links, and
+  # those are account access. To read it, publish 8025 for as long as you need
+  # and then stop doing that.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: lms_mailpit
+    restart: always
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: runner
+    container_name: lms_backend
+    restart: always
+    ports:
+      - "127.0.0.1:5000:5000"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-lms_user}:${POSTGRES_PASSWORD:-lms_password}@postgres:5432/${POSTGRES_DB:-lms_db}?schema=public
+      # No dev fallbacks here on purpose. The compose file for development
+      # carries defaults that are published in this repository; anyone who can
+      # read it could forge a session token for any user. These have to come
+      # from .env, and the stack refuses to start without them.
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set a strong JWT_ACCESS_SECRET in .env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set a strong JWT_REFRESH_SECRET in .env}
+      TWO_FACTOR_ENCRYPTION_KEY: ${TWO_FACTOR_ENCRYPTION_KEY:?set TWO_FACTOR_ENCRYPTION_KEY in .env}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      CORS_ORIGIN: ${CORS_ORIGIN:?set CORS_ORIGIN to the public origin}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:?set PUBLIC_API_URL to the public origin}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:?set PUBLIC_APP_URL to the public origin}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      MAIL_FROM: ${MAIL_FROM:-Estúdio <nao-responder@localhost>}
+      PAYSUITE_BASE_URL: ${PAYSUITE_BASE_URL:-https://paysuite.tech/api/v1}
+      PAYSUITE_API_KEY: ${PAYSUITE_API_KEY:-}
+      PAYSUITE_WEBHOOK_SECRET: ${PAYSUITE_WEBHOOK_SECRET:-}
+      PAYPAL_BASE_URL: ${PAYPAL_BASE_URL:-https://api-m.sandbox.paypal.com}
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
+      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:-}
+      PAYPAL_WEBHOOK_ID: ${PAYPAL_WEBHOOK_ID:-}
+      PAYPAL_CURRENCY: ${PAYPAL_CURRENCY:-USD}
+      PAYPAL_MZN_PER_USD_RATE: ${PAYPAL_MZN_PER_USD_RATE:-64}
+      BUNNY_STREAM_BASE_URL: ${BUNNY_STREAM_BASE_URL:-https://video.bunnycdn.com}
+      BUNNY_STREAM_LIBRARY_ID: ${BUNNY_STREAM_LIBRARY_ID:-}
+      BUNNY_STREAM_API_KEY: ${BUNNY_STREAM_API_KEY:-}
+      BUNNY_STREAM_TOKEN_AUTH_KEY: ${BUNNY_STREAM_TOKEN_AUTH_KEY:-}
+      BUNNY_STREAM_TOKEN_TTL_SECONDS: ${BUNNY_STREAM_TOKEN_TTL_SECONDS:-3600}
+    volumes:
+      # Same volume as the dev stack, so videos and materials already uploaded
+      # are still there.
+      - backend_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: runner
+      args:
+        # Baked into the browser bundle. Must be reachable from the visitor's
+        # browser, which localhost is not.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?set NEXT_PUBLIC_API_URL to the public origin plus /api/v1}
+    container_name: lms_frontend
+    restart: always
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      NODE_ENV: production
+      # Server Components fetch over the compose network, never through the
+      # tunnel and back.
+      INTERNAL_API_URL: http://backend:5000/api/v1
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  backend_uploads:

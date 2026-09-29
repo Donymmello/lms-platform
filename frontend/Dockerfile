@@ -15,6 +15,14 @@
 
     ENV NEXT_TELEMETRY_DISABLED 1
 
+    # NEXT_PUBLIC_* values are compiled into the browser bundle, so this has to
+    # be known now, not at container start — and it has to be an address the
+    # visitor's browser can reach. Change it and the image must be rebuilt.
+    # src/config/env.ts validates it at import time, so the build fails loudly
+    # rather than shipping a bundle that calls nowhere.
+    ARG NEXT_PUBLIC_API_URL
+    ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
     RUN npm run build
 
     # --- ETAPA 3: Imagem de Produção ---

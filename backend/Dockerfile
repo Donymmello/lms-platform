@@ -41,6 +41,14 @@
     COPY --from=builder /app/dist ./dist
     COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
+    # Uploads (vídeos e materiais das aulas) vivem num volume montado aqui.
+    # O directório tem de existir e pertencer ao utilizador `node` ANTES de o
+    # volume ser montado: o Docker copia a posse do directório da imagem na
+    # primeira montagem, e sem isto o volume fica de root e o processo
+    # não-root não consegue escrever — os uploads falhavam com EACCES.
+    RUN mkdir -p /app/uploads/videos /app/uploads/materials \
+        && chown -R node:node /app/uploads
+
     # Utilizador não-root por segurança
     USER node
 
