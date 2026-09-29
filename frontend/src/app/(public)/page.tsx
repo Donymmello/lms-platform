@@ -48,8 +48,7 @@ export default async function HomePage() {
           </h1>
 
           <p className="mx-auto mt-5 max-w-md text-sm leading-relaxed text-muted-foreground">
-            Cursos em vídeo ao teu ritmo. Inscreve-te, assiste onde estiveres, e o teu progresso
-            fica guardado.
+            Cursos em vídeo, para ver quando puderes. O player lembra-se onde paraste.
           </p>
 
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
@@ -109,13 +108,13 @@ export default async function HomePage() {
             icon={<CreditCard className="h-5 w-5" />}
             step="02"
             title="Paga como te dá jeito"
-            body="M-Pesa, e-Mola ou PayPal. A inscrição fica activa assim que o pagamento for confirmado."
+            body="M-Pesa, e-Mola ou PayPal. Assim que o pagamento entra, o curso abre."
           />
           <Step
             icon={<GraduationCap className="h-5 w-5" />}
             step="03"
             title="Aprende ao teu ritmo"
-            body="O vídeo retoma onde paraste, os materiais ficam disponíveis, e cada módulo termina com uma avaliação."
+            body="Cada módulo fecha com uma avaliação, e podes repeti-la à vontade. Os materiais da aula descarregam-se."
           />
         </ol>
       </section>
@@ -131,8 +130,8 @@ export default async function HomePage() {
               Tens algo para ensinar?
             </h2>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              Publica o teu curso aqui. Carregas os vídeos, organizas os módulos e defines o preço —
-              a plataforma trata do pagamento e do acesso.
+              Publica o teu curso aqui. Tu defines o preço e o conteúdo. A plataforma cobra e dá o
+              acesso.
             </p>
             <Link
               href="/ensinar"

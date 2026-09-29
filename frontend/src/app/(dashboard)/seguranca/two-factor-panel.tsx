@@ -47,8 +47,8 @@ export function TwoFactorPanel() {
           <ShieldCheck className="h-6 w-6 text-primary" />
           <CardTitle>Guarda estes códigos</CardTitle>
           <CardDescription>
-            Cada um serve uma vez, se perderes o telemóvel. <strong>Não voltam a ser mostrados</strong> —
-            guarda-os agora num sítio seguro.
+            Cada um serve uma vez, se perderes o telemóvel. <strong>Não voltam a ser mostrados</strong>,
+            por isso guarda-os agora num sítio seguro.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

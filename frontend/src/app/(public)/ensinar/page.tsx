@@ -20,7 +20,7 @@ const STEPS = [
   {
     icon: BarChart3,
     title: "Acompanha os resultados",
-    body: "Receita, inscrições e taxa de conclusão por curso, no teu painel — só dos teus cursos.",
+    body: "Receita, inscrições e taxa de conclusão por curso, no teu painel (só dos teus cursos).",
   },
 ];
 
@@ -36,8 +36,8 @@ export default function TeachPage() {
           Passa o que sabes <em className="italic text-primary">a limpo</em>
         </h1>
         <p className="relative mt-5 text-sm leading-relaxed text-muted-foreground">
-          Ensinar aqui não é outra conta. É a mesma que já tens — ativas a parte de instrutor e ficas
-          com um painel para criar cursos, sem deixar de ser aluno nos que já compraste.
+          Usas a conta que já tens. Ativas a parte de instrutor e ganhas um painel para criar cursos.
+          Continuas aluno nos que já compraste.
         </p>
         <div className="relative mt-8">
           <BecomeInstructorCta />

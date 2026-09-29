@@ -105,7 +105,7 @@ export function LiveSessionsManager({ courseId }: { courseId: string }) {
               className={inputClass}
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="Sessão de dúvidas — módulo 1"
+              placeholder="Sessão de dúvidas do módulo 1"
             />
           </label>
 

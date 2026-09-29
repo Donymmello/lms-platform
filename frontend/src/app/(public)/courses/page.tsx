@@ -15,7 +15,7 @@ export default function PublicCoursesPage() {
           Escolhe o que queres <em className="italic text-primary">dominar</em>
         </h1>
         <p className="relative mt-4 text-sm leading-relaxed text-muted-foreground">
-          Cursos em vídeo, ao teu ritmo. Inscreve-te e o curso passa a viver no teu estúdio.
+          Inscreve-te num curso e ele passa a viver no teu estúdio, com o teu progresso guardado.
         </p>
       </header>
 

@@ -122,7 +122,7 @@ export function ModuleAssessment({ moduleId }: { moduleId: string }) {
         </p>
         {/* Said up front, because it changes how someone approaches a quiz. */}
         <p className="text-xs text-muted-foreground">
-          Podes repetir quantas vezes quiseres — conta sempre a melhor nota.
+          Podes repetir quantas vezes quiseres, e conta sempre a melhor nota.
         </p>
       </header>
 

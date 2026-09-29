@@ -36,7 +36,7 @@ export function NewCourse({ basePath }: { basePath: string }) {
       <div>
         <h1 className="text-2xl font-bold">Novo curso</h1>
         <p className="mt-1 text-muted-foreground">
-          Cria a ficha do curso — módulos e aulas são adicionados a seguir.
+          Cria a ficha do curso. Módulos e aulas vêm a seguir.
         </p>
       </div>
       <NewCourseForm basePath={basePath} />

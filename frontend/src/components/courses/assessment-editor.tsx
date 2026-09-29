@@ -155,7 +155,7 @@ export function AssessmentEditor({
         return setError(`A pergunta ${position} não tem nenhuma opção correcta.`);
       }
       if (!question.options.some((option) => !option.isCorrect)) {
-        return setError(`A pergunta ${position} tem todas as opções correctas — não pergunta nada.`);
+        return setError(`A pergunta ${position} tem todas as opções correctas, portanto não pergunta nada.`);
       }
     }
 
@@ -266,8 +266,8 @@ export function AssessmentEditor({
 
               <p className="pl-5 text-xs text-muted-foreground">
                 {correctCount > 1
-                  ? "Várias opções correctas — o aluno vê caixas e tem de acertar o conjunto todo."
-                  : "Uma opção correcta — o aluno escolhe uma."}
+                  ? "Várias opções correctas: o aluno vê caixas e tem de acertar o conjunto todo."
+                  : "Uma opção correcta: o aluno escolhe uma."}
               </p>
 
               <div className="space-y-2 pl-5">
