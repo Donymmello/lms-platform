@@ -45,6 +45,8 @@ export interface CourseListItem {
   status: CourseStatus;
   priceCents: number;
   thumbnailUrl: string | null;
+  /** File name of a cover uploaded to this server. The URL is built when rendering. */
+  coverKey: string | null;
   instructor: CourseInstructor;
   moduleCount: number;
   createdAt: string;
@@ -58,6 +60,8 @@ export interface CourseDetail {
   status: CourseStatus;
   priceCents: number;
   thumbnailUrl: string | null;
+  /** File name of a cover uploaded to this server. The URL is built when rendering. */
+  coverKey: string | null;
   instructor: CourseInstructor;
   modules: CourseModuleItem[];
   createdAt: string;

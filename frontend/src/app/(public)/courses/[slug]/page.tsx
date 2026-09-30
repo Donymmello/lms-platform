@@ -52,7 +52,8 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
       {/* --- Billboard --- */}
       <section className="relative overflow-hidden border-b border-border/60">
         <div className="absolute inset-0">
-          <CourseCover slug={course.slug} title={course.title} thumbnailUrl={course.thumbnailUrl} />
+          <CourseCover slug={course.slug} title={course.title} thumbnailUrl={course.thumbnailUrl}
+            coverKey={course.coverKey} />
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 to-background/50" />
         <div className="pointer-events-none absolute -left-32 top-0 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />

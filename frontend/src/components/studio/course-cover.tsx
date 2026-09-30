@@ -4,6 +4,8 @@
  * own recognisable colour, and keep it in the warm half of the wheel so it
  * belongs to the "estúdio" palette.
  */
+import { publicApiUrl } from "@/services/api-client";
+
 export function hueFromSlug(slug: string): number {
   let hash = 0;
   for (let index = 0; index < slug.length; index += 1) {
@@ -16,19 +18,31 @@ export function hueFromSlug(slug: string): number {
 interface CourseCoverProps {
   slug: string;
   title: string;
-  /** The real cover, when the course has one. */
+  /** A cover hosted elsewhere, pasted as a URL. */
   thumbnailUrl?: string | null;
+  /** A cover uploaded to this server. Takes precedence over `thumbnailUrl`. */
+  coverKey?: string | null;
   /** Extra classes for the image/gradient layer — used for hover zoom. */
   className?: string;
 }
 
 /** Fills its positioned parent. Either the real thumbnail or a generated stand-in. */
-export function CourseCover({ slug, title, thumbnailUrl, className = "" }: CourseCoverProps) {
-  if (thumbnailUrl) {
+export function CourseCover({ slug, title, thumbnailUrl, coverKey, className = "" }: CourseCoverProps) {
+  /*
+   * An uploaded cover wins over a pasted URL: it is the more deliberate act,
+   * and it is the one we can still serve if the other host disappears.
+   *
+   * `publicApiUrl`, not `apiUrl`: this component renders inside Server
+   * Components too, and `apiUrl` would hand those the Docker-internal address,
+   * which resolves for nobody with a browser.
+   */
+  const src = coverKey ? publicApiUrl(`/public/covers/${coverKey}`) : thumbnailUrl;
+
+  if (src) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={thumbnailUrl}
+        src={src}
         alt=""
         className={`absolute inset-0 h-full w-full object-cover ${className}`}
       />

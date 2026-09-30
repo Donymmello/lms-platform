@@ -93,10 +93,19 @@ export const coursesRepository = {
       title: string;
       description: string;
       thumbnailUrl: string | null;
+      coverKey: string | null;
       priceCents: number;
     }>
   ): Promise<Course> {
     return prisma.course.update({ where: { id }, data });
+  },
+
+  /**
+   * Used by the public cover route. Serving only keys a course actually points
+   * at means a leftover file in the directory is not reachable by guessing.
+   */
+  findByCoverKey(coverKey: string): Promise<Course | null> {
+    return prisma.course.findFirst({ where: { coverKey } });
   },
 
   updateStatus(id: string, status: CourseStatus): Promise<Course> {

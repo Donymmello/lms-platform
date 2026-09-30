@@ -108,6 +108,19 @@ export const coursesController = {
     res.status(200).json({ status: "success", data: { course } });
   }),
 
+  setCover: asyncHandler(async (req: Request<CourseIdParam>, res: Response) => {
+    if (!req.file) {
+      throw new ValidationError("No image was uploaded (expected a 'file' form field)");
+    }
+    const course = await coursesService.setCover(req.params.courseId, req.file, req.user!);
+    res.status(200).json({ status: "success", data: { course } });
+  }),
+
+  removeCover: asyncHandler(async (req: Request<CourseIdParam>, res: Response) => {
+    const course = await coursesService.removeCover(req.params.courseId, req.user!);
+    res.status(200).json({ status: "success", data: { course } });
+  }),
+
   addLessonMaterial: asyncHandler(async (req: Request<LessonIdParam>, res: Response) => {
     if (!req.file) {
       throw new ValidationError("No file was uploaded (expected a 'file' form field)");

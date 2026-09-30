@@ -46,7 +46,7 @@
     # volume ser montado: o Docker copia a posse do directório da imagem na
     # primeira montagem, e sem isto o volume fica de root e o processo
     # não-root não consegue escrever — os uploads falhavam com EACCES.
-    RUN mkdir -p /app/uploads/videos /app/uploads/materials \
+    RUN mkdir -p /app/uploads/videos /app/uploads/materials /app/uploads/covers \
         && chown -R node:node /app/uploads
 
     # Utilizador não-root por segurança

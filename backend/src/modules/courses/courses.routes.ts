@@ -3,6 +3,7 @@ import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate";
 import { checkRole } from "../../middlewares/checkRole";
 import { validate } from "../../middlewares/validate";
+import { coverUpload } from "../../middlewares/coverUpload";
 import { materialUpload } from "../../middlewares/materialUpload";
 import { videoUpload } from "../../middlewares/videoUpload";
 import { coursesController } from "./courses.controller";
@@ -102,4 +103,18 @@ coursesRouter.delete(
   "/:courseId/modules/:moduleId/lessons/:lessonId/materials/:materialId",
   validate(materialIdParamSchema, "params"),
   coursesController.removeLessonMaterial
+);
+
+// The cover, uploaded rather than pasted as a URL. Read publicly through
+// /api/v1/public/covers — see public-covers.routes.ts.
+coursesRouter.post(
+  "/:courseId/cover",
+  validate(courseIdParamSchema, "params"),
+  coverUpload.single("file"),
+  coursesController.setCover
+);
+coursesRouter.delete(
+  "/:courseId/cover",
+  validate(courseIdParamSchema, "params"),
+  coursesController.removeCover
 );

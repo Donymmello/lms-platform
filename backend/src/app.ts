@@ -11,6 +11,7 @@ import { authRouter } from "./modules/auth/auth.routes";
 import { usersRouter } from "./modules/users/users.routes";
 import { coursesRouter } from "./modules/courses/courses.routes";
 import { publicCoursesRouter } from "./modules/public-courses/public-courses.routes";
+import { publicCoversRouter } from "./modules/public-courses/public-covers.routes";
 import { enrollmentsRouter } from "./modules/enrollments/enrollments.routes";
 import { liveSessionsRouter } from "./modules/live-sessions/live-sessions.routes";
 import { paymentsRouter } from "./modules/payments/payments.routes";
@@ -85,6 +86,7 @@ export function createApp(): Express {
   app.use("/api/v1/users", usersRouter);
   app.use("/api/v1/courses", coursesRouter);
   app.use("/api/v1/public/courses", publicCoursesRouter);
+  app.use("/api/v1/public/covers", publicCoversRouter);
   app.use("/api/v1/enrollments", enrollmentsRouter);
   app.use("/api/v1/payments", paymentsRouter);
   app.use("/api/v1/lessons", playbackRouter);

@@ -24,6 +24,7 @@ export function CourseTile({ course, index }: { course: CourseListItem; index: n
             slug={course.slug}
             title={course.title}
             thumbnailUrl={course.thumbnailUrl}
+            coverKey={course.coverKey}
             className="transition-transform duration-500 group-hover:scale-[1.06]"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />

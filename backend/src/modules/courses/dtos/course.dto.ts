@@ -49,6 +49,10 @@ export interface CourseListItemDto {
   status: CourseStatus;
   priceCents: number;
   thumbnailUrl: string | null;
+  /// The file name of an uploaded cover, if there is one. The URL is built by
+  /// whoever renders it, so the platform can move domain without rewriting
+  /// every course.
+  coverKey: string | null;
   instructor: CourseInstructorDto;
   moduleCount: number;
   createdAt: Date;
@@ -63,6 +67,10 @@ export interface CourseDetailDto {
   status: CourseStatus;
   priceCents: number;
   thumbnailUrl: string | null;
+  /// The file name of an uploaded cover, if there is one. The URL is built by
+  /// whoever renders it, so the platform can move domain without rewriting
+  /// every course.
+  coverKey: string | null;
   instructor: CourseInstructorDto;
   modules: CourseModuleResponseDto[];
   createdAt: Date;

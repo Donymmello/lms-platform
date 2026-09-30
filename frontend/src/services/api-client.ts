@@ -55,6 +55,19 @@ export function apiUrl(path: string): string {
   return `${resolveBaseUrl()}${path}`;
 }
 
+/**
+ * Like `apiUrl`, but always the public address, never the Docker-internal one.
+ *
+ * `apiUrl` goes through `resolveBaseUrl`, which on the server prefers
+ * `INTERNAL_API_URL` — correct for a fetch the server makes itself, and wrong
+ * for anything that ends up in HTML. A cover rendered by a Server Component
+ * would have carried `http://lms-backend:5000/...`, which resolves for nobody
+ * outside the compose network.
+ */
+export function publicApiUrl(path: string): string {
+  return `${env.NEXT_PUBLIC_API_URL}${path}`;
+}
+
 /** Shared response handling for both `apiFetch` and `apiUpload` — parses JSON when present and throws `ApiError` for any non-2xx status. */
 async function handleResponse<T>(response: Response): Promise<T> {
   const isJson = response.headers.get("content-type")?.includes("application/json");

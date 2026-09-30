@@ -89,6 +89,12 @@ const envSchema = z.object({
   // fallback for these. Same warning about needing a mounted volume.
   LOCAL_MATERIAL_DIR: z.string().default("/app/uploads/materials"),
 
+  // --- Course covers ---
+  // Kept apart from materials on purpose: covers are served to anyone, and
+  // materials are behind the paywall. Separate directories mean a mistake in
+  // the public route cannot reach a paid worksheet.
+  LOCAL_COVER_DIR: z.string().default("/app/uploads/covers"),
+
   // --- Bunny Stream (video hosting + signed playback) ---
   // https://bunny.net/docs/stream/ — create a Stream library in the
   // dashboard to get the library id, API key (management API) and the

@@ -1,5 +1,7 @@
+import fs from "node:fs/promises";
 import { Course, Role } from "@prisma/client";
 import { ForbiddenError, NotFoundError } from "../../errors";
+import { localCoverStorage } from "../../integrations/local-cover-storage";
 import { slugify } from "../../utils/slugify";
 import { enrollmentsRepository } from "../enrollments/enrollments.repository";
 import { AuthenticatedUser } from "../../@types/express";
@@ -24,6 +26,7 @@ function toListItemDto(course: CourseWithListRelations): CourseListItemDto {
     status: course.status,
     priceCents: course.priceCents,
     thumbnailUrl: course.thumbnailUrl,
+    coverKey: course.coverKey,
     instructor: course.instructor,
     moduleCount: course._count.modules,
     createdAt: course.createdAt,
@@ -59,6 +62,7 @@ function toDetailDto(course: CourseWithDetailRelations): CourseDetailDto {
     status: course.status,
     priceCents: course.priceCents,
     thumbnailUrl: course.thumbnailUrl,
+    coverKey: course.coverKey,
     instructor: course.instructor,
     modules: course.modules.map((courseModule: CourseWithDetailRelations["modules"][number]) => ({
       id: courseModule.id,
@@ -188,6 +192,60 @@ export const coursesService = {
 
     await coursesRepository.updateStatus(id, input.status);
     return toDetailDto(await requireCourseWithContent(id));
+  },
+
+  /**
+   * Replaces the course's uploaded cover. The previous file is deleted after
+   * the row points at the new one, so a failure leaves a cover that works
+   * rather than a course with none.
+   */
+  async setCover(
+    id: string,
+    file: { path: string; originalname: string },
+    actingUser: AuthenticatedUser
+  ): Promise<CourseDetailDto> {
+    const course = await requireCourse(id);
+    assertCanManage(course, actingUser);
+
+    try {
+      const coverKey = await localCoverStorage.store(file.path, file.originalname);
+      await coursesRepository.update(id, { coverKey });
+
+      if (course.coverKey) {
+        await localCoverStorage.remove(course.coverKey);
+      }
+    } finally {
+      await fs.unlink(file.path).catch(() => {
+        // Temp file cleanup is best-effort — a leftover costs disk, not correctness.
+      });
+    }
+
+    return toDetailDto(await requireCourseWithContent(id));
+  },
+
+  async removeCover(id: string, actingUser: AuthenticatedUser): Promise<CourseDetailDto> {
+    const course = await requireCourse(id);
+    assertCanManage(course, actingUser);
+
+    if (course.coverKey) {
+      await coursesRepository.update(id, { coverKey: null });
+      await localCoverStorage.remove(course.coverKey);
+    }
+
+    return toDetailDto(await requireCourseWithContent(id));
+  },
+
+  /**
+   * Resolves a cover for public reading. Nothing is checked beyond the file
+   * existing: a cover is shown in the catalogue to people with no session, so
+   * there is nothing here to authorise.
+   */
+  async findCoverKey(key: string): Promise<string> {
+    const course = await coursesRepository.findByCoverKey(key);
+    if (!course) {
+      throw new NotFoundError("Cover not found");
+    }
+    return key;
   },
 
   async remove(id: string, actingUser: AuthenticatedUser): Promise<void> {

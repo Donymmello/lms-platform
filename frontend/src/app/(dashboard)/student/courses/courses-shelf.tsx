@@ -44,6 +44,7 @@ function CourseCard({ entry, index }: { entry: Entry; index: number }) {
             slug={course.slug}
             title={course.title}
             thumbnailUrl={course.thumbnailUrl}
+            coverKey={course.coverKey}
             className="transition-transform duration-500 group-hover:scale-[1.06]"
           />
 
@@ -146,7 +147,8 @@ function Hero({ entry }: { entry: Entry }) {
   return (
     <section className="relative overflow-hidden rounded-2xl border border-border">
       <div className="absolute inset-0">
-        <CourseCover slug={course.slug} title={course.title} thumbnailUrl={course.thumbnailUrl} />
+        <CourseCover slug={course.slug} title={course.title} thumbnailUrl={course.thumbnailUrl}
+            coverKey={course.coverKey} />
       </div>
       {/* Two stacked washes: one to seat the text, one warm bloom for depth. */}
       <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/30" />

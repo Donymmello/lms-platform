@@ -84,7 +84,12 @@ model Course {
   /// unique (see courses.service.ts) — used for public course URLs later.
   slug        String       @unique
   description String       @default("")
+  /// An image hosted somewhere else, pasted as a URL by the instructor.
   thumbnailUrl String?
+  /// A cover uploaded to this server. The file name only; the URL is built by
+  /// whoever renders it, so moving the platform to another domain does not
+  /// leave every course pointing at the old one.
+  coverKey     String?
   priceCents  Int          @default(0)
   status      CourseStatus @default(DRAFT)
 
