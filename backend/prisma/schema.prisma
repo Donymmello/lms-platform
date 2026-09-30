@@ -51,6 +51,7 @@ model User {
   payments        Payment[]
   lessonProgress  LessonProgress[]
   assessmentAttempts AssessmentAttempt[]
+  auditEvents        AuditEvent[]       @relation("AuditActor")
 
   @@map("users")
 }
@@ -309,6 +310,43 @@ model TwoFactorRecoveryCode {
 /// be used to take over accounts. `usedAt` makes it single-use and
 /// `expiresAt` keeps the window short — both are checked on redemption, and
 /// requesting a new token invalidates any earlier unused one.
+/// A record of the acts that change who can do what: role changes, the
+/// self-service instructor upgrade, accounts being switched off, two-factor
+/// being turned on or off, a password actually being reset.
+///
+/// Ordinary reads and writes are not here. This is for answering "who did
+/// this, and when" about the handful of changes where that question gets
+/// asked, and a log of everything would bury those.
+model AuditEvent {
+  id String @id @default(uuid())
+
+  /// Null when the act had no signed-in actor, or when the account was later
+  /// deleted. `actorEmail` is kept alongside precisely so the record still
+  /// names someone after that: an audit trail that a deletion can blank is
+  /// not an audit trail.
+  actorId    String?
+  actor      User?   @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actorEmail String?
+
+  /// Dotted and past tense, e.g. `user.role_changed`.
+  action String
+
+  /// What it happened to. Free-form because it is not always a user.
+  targetType String?
+  targetId   String?
+  /// Whatever else is worth keeping and does not deserve a column: the old
+  /// and new role, which method disabled two-factor.
+  metadata Json?
+
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorId])
+  @@index([action])
+  @@map("audit_events")
+}
+
 model PasswordResetToken {
   id        String    @id @default(uuid())
   tokenHash String    @unique

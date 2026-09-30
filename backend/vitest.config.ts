@@ -7,7 +7,7 @@ import { defineConfig } from "vitest/config";
  * that are already set, so these win over `.env`.
  */
 const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL ?? "postgresql://lms_user:lms_password@postgres:5432/lms_db_test?schema=public";
+  process.env.TEST_DATABASE_URL ?? "postgresql://lms_user:lms_password@lms-postgres:5432/lms_db_test?schema=public";
 
 export default defineConfig({
   test: {

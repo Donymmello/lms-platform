@@ -37,6 +37,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <AdminNavLink href="/admin">Painel</AdminNavLink>
             <AdminNavLink href="/admin/courses">Cursos</AdminNavLink>
             <AdminNavLink href="/admin/users">Utilizadores</AdminNavLink>
+            <AdminNavLink href="/admin/auditoria">Auditoria</AdminNavLink>
           </nav>
 
           <div className="shrink-0">

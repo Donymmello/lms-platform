@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate";
-import { authRateLimiter } from "../../middlewares/rateLimiter";
+import { authRateLimiter, registerRateLimiter } from "../../middlewares/rateLimiter";
 import { validate } from "../../middlewares/validate";
 import { authController } from "./auth.controller";
 import {
@@ -15,9 +15,13 @@ import {
 
 export const authRouter = Router();
 
+// Both limiters, deliberately: authRateLimiter caps the burst, and the
+// register one caps the hour — every signup sends mail to whatever address
+// was typed, so the slow drip matters as much as the burst.
 authRouter.post(
   "/register",
   authRateLimiter,
+  registerRateLimiter,
   validate(registerSchema, "body"),
   authController.register
 );

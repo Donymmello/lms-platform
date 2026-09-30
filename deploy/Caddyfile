@@ -36,10 +36,10 @@
 
 {$SITE_ADDRESS} {
 	handle /api/* {
-		reverse_proxy backend:5000
+		reverse_proxy lms-backend:5000
 	}
 
 	handle {
-		reverse_proxy frontend:3000
+		reverse_proxy lms-frontend:3000
 	}
 }

@@ -1,3 +1,10 @@
+# Service names are prefixed because Docker's DNS answers by service name on
+# every network a container joins. A service called `frontend` or `postgres`
+# will collide, silently, with the same generic name in any other project the
+# moment a shared proxy is attached to both networks — the proxy asks for
+# `frontend` and gets whichever container answers first. That took a live site
+# down once; see "Se a VPS já serve outros sites" in the README.
+#
 # Production-mode stack, for showing this to someone outside the machine.
 #
 # Use it *instead of* docker-compose.yml, not as an override:
@@ -30,7 +37,7 @@
 #     broken at login — go in through the tunnel's HTTPS address.
 
 services:
-  postgres:
+  lms-postgres:
     image: postgres:16-alpine
     container_name: lms_postgres
     restart: always
@@ -50,12 +57,12 @@ services:
   # deliberately not published: the inbox holds password-reset links, and
   # those are account access. To read it, publish 8025 for as long as you need
   # and then stop doing that.
-  mailpit:
+  lms-mailpit:
     image: axllent/mailpit:latest
     container_name: lms_mailpit
     restart: always
 
-  backend:
+  lms-backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -67,7 +74,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-lms_user}:${POSTGRES_PASSWORD:-lms_password}@postgres:5432/${POSTGRES_DB:-lms_db}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-lms_user}:${POSTGRES_PASSWORD:-lms_password}@lms-postgres:5432/${POSTGRES_DB:-lms_db}?schema=public
       # No dev fallbacks here on purpose. The compose file for development
       # carries defaults that are published in this repository; anyone who can
       # read it could forge a session token for any user. These have to come
@@ -84,7 +91,7 @@ services:
       PUBLIC_API_URL: ${PUBLIC_ORIGIN}
       PUBLIC_APP_URL: ${PUBLIC_ORIGIN}
       COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
-      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_HOST: ${SMTP_HOST:-lms-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
@@ -109,10 +116,10 @@ services:
       # are still there.
       - backend_uploads:/app/uploads
     depends_on:
-      postgres:
+      lms-postgres:
         condition: service_healthy
 
-  frontend:
+  lms-frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -127,10 +134,10 @@ services:
       NODE_ENV: production
       # Server Components fetch over the compose network, never through the
       # tunnel and back.
-      INTERNAL_API_URL: http://backend:5000/api/v1
+      INTERNAL_API_URL: http://lms-backend:5000/api/v1
       NEXT_PUBLIC_API_URL: ${PUBLIC_ORIGIN}/api/v1
     depends_on:
-      - backend
+      - lms-backend
 
   # The single origin everything is served from: the app at the root, the API
   # under /api. See deploy/Caddyfile.
@@ -139,7 +146,7 @@ services:
   # domain, it obtains and renews a Let's Encrypt certificate on its own. That
   # matters more than it sounds — in production the session cookies are marked
   # Secure, so without HTTPS nobody can sign in at all.
-  proxy:
+  lms-proxy:
     image: caddy:2-alpine
     container_name: lms_proxy
     restart: always
@@ -164,8 +171,8 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - frontend
-      - backend
+      - lms-frontend
+      - lms-backend
 
 volumes:
   postgres_data:

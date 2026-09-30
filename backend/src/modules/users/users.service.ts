@@ -5,6 +5,7 @@ import { issueTokens } from "../auth/auth.service";
 import { AuthTokensDto } from "../auth/dtos/auth.dto";
 import { PaginatedUsersDto, UserResponseDto } from "./dtos/user.dto";
 import { ListUsersQuery, UpdateUserRoleInput, UpdateUserStatusInput } from "./schemas/user.schema";
+import { audit } from "../audit/audit.service";
 import { usersRepository } from "./users.repository";
 
 function toUserResponseDto(user: User): UserResponseDto {
@@ -63,6 +64,17 @@ export const usersService = {
     const updated =
       user.role === Role.STUDENT ? await usersRepository.updateRole(user.id, Role.INSTRUCTOR) : user;
 
+    // Only when it changed something: recording the no-op would fill the log
+    // with double clicks.
+    if (user.role === Role.STUDENT) {
+      await audit.record({
+        action: "user.became_instructor",
+        actorEmail: user.email,
+        targetType: "user",
+        targetId: user.id,
+      });
+    }
+
     return { user: toUserResponseDto(updated), tokens: await issueTokens(updated) };
   },
 
@@ -75,8 +87,20 @@ export const usersService = {
       throw new ForbiddenError("You cannot change your own role");
     }
 
-    await requireUser(targetId);
+    const [target, actor] = await Promise.all([requireUser(targetId), requireUser(actingUserId)]);
     const updated = await usersRepository.updateRole(targetId, input.role);
+
+    await audit.record({
+      action: "user.role_changed",
+      actorEmail: actor.email,
+      targetType: "user",
+      targetId,
+      // Both values, because "who promoted this account to ADMIN" is the
+      // question this log exists to answer, and the new role alone does not
+      // say what it was before.
+      metadata: { from: target.role, to: input.role, targetEmail: target.email },
+    });
+
     return toUserResponseDto(updated);
   },
 
@@ -89,8 +113,16 @@ export const usersService = {
       throw new ForbiddenError("You cannot deactivate your own account");
     }
 
-    await requireUser(targetId);
+    const [target, actor] = await Promise.all([requireUser(targetId), requireUser(actingUserId)]);
     const updated = await usersRepository.updateStatus(targetId, input.isActive);
+
+    await audit.record({
+      action: input.isActive ? "user.activated" : "user.deactivated",
+      actorEmail: actor.email,
+      targetType: "user",
+      targetId,
+      metadata: { targetEmail: target.email },
+    });
 
     // Deactivating a user must take effect immediately, not just at their
     // access token's next 15-minute expiry — revoking every refresh token

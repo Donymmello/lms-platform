@@ -14,6 +14,7 @@ import {
 import { parseExpiryToMs } from "../../constants/cookies";
 import { env } from "../../config/env";
 import { notifications } from "../../notifications/notifications";
+import { audit } from "../audit/audit.service";
 import { authRepository } from "./auth.repository";
 import { twoFactorService } from "./two-factor.service";
 import {
@@ -123,6 +124,16 @@ export const authService = {
     await authRepository.updatePassword(record.userId, await hashPassword(input.password));
     await authRepository.markPasswordResetTokenUsed(record.id);
     await authRepository.revokeAllRefreshTokensForUser(record.userId);
+
+    // There is no session here: the actor is whoever held the link, so the
+    // address in the entry is the only trace of who that was.
+    await audit.record({
+      action: "auth.password_reset_completed",
+      actorId: record.userId,
+      actorEmail: record.user.email,
+      targetType: "user",
+      targetId: record.userId,
+    });
   },
 
   async login(input: LoginInput): Promise<AuthResultDto | TwoFactorChallengeDto> {

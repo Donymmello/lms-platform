@@ -17,7 +17,7 @@ const clientEnvSchema = z.object({
  * from code running inside the frontend container means the frontend
  * container itself, not the backend, so Server Components/route handlers
  * that fetch during SSR need the backend's Docker-network hostname
- * (`http://backend:5000/...`) instead. Optional and unused outside Docker,
+ * (`http://lms-backend:5000/...`) instead. Optional and unused outside Docker,
  * where server and browser can both reach the backend the same way.
  */
 const serverEnvSchema = z.object({

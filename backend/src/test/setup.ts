@@ -39,6 +39,11 @@ const TABLES = [
   "two_factor_recovery_codes",
   "password_reset_tokens",
   "refresh_tokens",
+  // Listed explicitly because it is the one table that deliberately survives
+  // its user: the actor relation is SetNull, so an audit trail cannot be
+  // blanked by deleting the account. Left out, its rows would carry over
+  // between tests and every count would be wrong.
+  "audit_events",
   "users",
 ];
 

@@ -6,6 +6,7 @@ import { env } from "../../config/env";
 import { comparePassword } from "../../utils/password";
 import { hashToken } from "../../utils/jwt";
 import { canEncryptSecrets, openSecret, sealSecret } from "../../utils/secret-box";
+import { audit } from "../audit/audit.service";
 import { authRepository } from "./auth.repository";
 
 /**
@@ -87,6 +88,12 @@ export const twoFactorService = {
       codes.map((value) => hashToken(normaliseRecoveryCode(value)))
     );
     await authRepository.enableTwoFactor(userId);
+    await audit.record({
+      action: "auth.two_factor_enabled",
+      actorEmail: user.email,
+      targetType: "user",
+      targetId: userId,
+    });
 
     return codes;
   },
@@ -130,6 +137,14 @@ export const twoFactorService = {
 
     await this.verifyCode(userId, code);
     await authRepository.disableTwoFactor(userId);
+    // Worth recording more than enabling it: turning the second factor off is
+    // what an attacker who already has the password would want to do.
+    await audit.record({
+      action: "auth.two_factor_disabled",
+      actorEmail: user.email,
+      targetType: "user",
+      targetId: userId,
+    });
   },
 
   async countUnusedRecoveryCodes(userId: string): Promise<number> {

@@ -26,7 +26,7 @@ O intervalo de três segundos não é arbitrário: com o polling no intervalo po
 
 O Prisma Client é regerado no arranque do container (ver o `CMD` em `backend/Dockerfile`). O volume de `/app/node_modules` é anónimo, e o Docker preenche um novo a partir da imagem cada vez que o container é recriado, trazendo de volta o cliente gerado no build, que não conhece migrations feitas depois. Sem isto, um `docker compose up` depois de mudar o schema devolvia 500 (`Unknown field ... for include statement`) no primeiro pedido que tocasse nos campos novos.
 
-Uma coisa continua manual: **depois de adicionar uma dependência**, corre `docker compose exec backend npm install` (ou reconstrói a imagem). Instalar no arranque reescreveria o `package-lock.json` do host a cada vez.
+Uma coisa continua manual: **depois de adicionar uma dependência**, corre `docker compose exec lms-backend npm install` (ou reconstrói a imagem). Instalar no arranque reescreveria o `package-lock.json` do host a cada vez.
 
 ## Pôr numa VPS para o cliente ver
 
@@ -66,7 +66,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 **5.** Aplica as migrações:
 
 ```bash
-docker compose -f docker-compose.prod.yml exec backend npx prisma migrate deploy
+docker compose -f docker-compose.prod.yml exec lms-backend npx prisma migrate deploy
 ```
 
 E cria os dados de demonstração, se quiseres o catálogo preenchido. Ver [Dados de demonstração](#dados-de-demonstração).
@@ -92,6 +92,10 @@ docker network connect <rede-do-caddy> lms_proxy
 ```
 
 E no Caddyfile dele, `reverse_proxy lms_proxy:8090`.
+
+**Atenção a um problema que isto pode causar, e já causou uma vez.** O DNS do Docker responde pelo **nome do serviço** em todas as redes a que um container pertence. Ligar o proxy a duas redes faz com que um pedido por `frontend` possa ser atendido pelo container de outro projecto — e o sintoma é 502 num site que não se tocou, ou pior, o proxy a servir a aplicação errada.
+
+Os serviços desta stack chamam-se `lms-postgres`, `lms-backend`, `lms-frontend`, `lms-proxy` e `lms-mailpit` por essa razão, não por estética. Se os outros projectos na máquina usarem `frontend`, `backend` ou `db`, vale a pena prefixá-los também antes de partilhar redes: a colisão é silenciosa até ao dia em que não é.
 
 Com nginx à frente em vez de Caddy, não te esqueças do `client_max_body_size`: o valor por omissão é 1 MB e rejeita qualquer vídeo com um 413 que parece bug da aplicação. O Caddy não tem esse limite.
 
@@ -239,7 +243,7 @@ docker exec lms_postgres psql -U lms_user -d lms_db -c "CREATE DATABASE lms_db_t
 Aplicar as migrations nela (repetir sempre que houver migrations novas):
 
 ```bash
-docker exec -e DATABASE_URL="postgresql://lms_user:lms_password@postgres:5432/lms_db_test?schema=public" lms_backend ./node_modules/.bin/prisma migrate deploy
+docker exec -e DATABASE_URL="postgresql://lms_user:lms_password@lms-postgres:5432/lms_db_test?schema=public" lms_backend ./node_modules/.bin/prisma migrate deploy
 ```
 
 Correr a suite:

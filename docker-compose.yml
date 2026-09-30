@@ -1,8 +1,15 @@
+# Service names are prefixed because Docker's DNS answers by service name on
+# every network a container joins. A service called `frontend` or `postgres`
+# will collide, silently, with the same generic name in any other project the
+# moment a shared proxy is attached to both networks — the proxy asks for
+# `frontend` and gets whichever container answers first. That took a live site
+# down once; see "Se a VPS já serve outros sites" in the README.
+#
 version: '3.8'
 
 services:
   # --- BANCO DE DADOS (PostgreSQL) ---
-  postgres:
+  lms-postgres:
     # Pinned to a specific major version on purpose: the floating `:alpine`
     # tag now resolves to Postgres 18+, which changed its on-disk data
     # layout (pg_ctlcluster-style) and refuses to start against a volume
@@ -17,7 +24,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-lms_db}
     ports:
       # Host-side only, for psql/Adminer from outside Docker. The backend
-      # reaches Postgres as `postgres:5432` over the compose network, so this
+      # reaches Postgres as `lms-postgres:5432` over the compose network, so this
       # can be any free host port — 5432 itself is often taken by another
       # project's database.
       - "${POSTGRES_HOST_PORT:-5434}:5432"
@@ -30,21 +37,21 @@ services:
       retries: 5
 
   # --- GERENCIADOR DO BANCO (Adminer) ---
-  adminer:
+  lms-adminer:
     image: adminer
     container_name: lms_adminer
     restart: always
     ports:
       - "8080:8080"
     depends_on:
-      - postgres
+      - lms-postgres
 
   # --- MAIL CATCHER (dev only) ---
   # Accepts every message the backend sends and shows it at
   # http://localhost:8025 instead of delivering it. Nothing leaves the
   # machine, so testing signup and payment emails needs no real mailbox and
   # cannot accidentally write to a customer.
-  mailpit:
+  lms-mailpit:
     image: axllent/mailpit:latest
     container_name: lms_mailpit
     restart: always
@@ -55,7 +62,7 @@ services:
       MP_SMTP_AUTH_ALLOW_INSECURE: 1
 
   # --- BACKEND (Node.js + Express + Prisma) ---
-  backend:
+  lms-backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -67,7 +74,7 @@ services:
     environment:
       NODE_ENV: development
       PORT: 5000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-lms_user}:${POSTGRES_PASSWORD:-lms_password}@postgres:5432/${POSTGRES_DB:-lms_db}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-lms_user}:${POSTGRES_PASSWORD:-lms_password}@lms-postgres:5432/${POSTGRES_DB:-lms_db}?schema=public
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev_only_access_secret_please_change_in_prod_32c}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_only_refresh_secret_please_change_in_prod_32}
       JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
@@ -77,7 +84,7 @@ services:
       # (Gmail, cPanel, Resend, SendGrid) to actually deliver mail.
       # Dev-only default. Generate a fresh one for any real deployment.
       TWO_FACTOR_ENCRYPTION_KEY: ${TWO_FACTOR_ENCRYPTION_KEY:-6465765f6f6e6c795f6b65795f6e6f745f666f725f70726f64756374696f6e21}
-      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_HOST: ${SMTP_HOST:-lms-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
@@ -111,11 +118,11 @@ services:
       # container being recreated.
       - backend_uploads:/app/uploads
     depends_on:
-      postgres:
+      lms-postgres:
         condition: service_healthy
 
   # --- FRONTEND (Next.js App Router) ---
-  frontend:
+  lms-frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -139,13 +146,13 @@ services:
       # generateMetadata). Inside Docker, `localhost` from the frontend
       # container is the frontend container itself — the backend is only
       # reachable at its service name on the compose network.
-      INTERNAL_API_URL: http://backend:5000/api/v1
+      INTERNAL_API_URL: http://lms-backend:5000/api/v1
     volumes:
       - ./frontend:/app
       - /app/node_modules
       - /app/.next
     depends_on:
-      - backend
+      - lms-backend
 
 volumes:
   postgres_data:

@@ -3,6 +3,8 @@ import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { env } from "./config/env";
+import { auditContext } from "./middlewares/auditContext";
+import { auditRouter } from "./modules/audit/audit.routes";
 import { generalRateLimiter } from "./middlewares/rateLimiter";
 import { analyticsRouter } from "./modules/analytics/analytics.routes";
 import { authRouter } from "./modules/auth/auth.routes";
@@ -71,6 +73,10 @@ export function createApp(): Express {
   // slot, and before the routes so every one of them is covered.
   app.use(generalRateLimiter);
 
+  // Carries the acting user and their address for the request, so an audit
+  // entry written deep in a service does not need them as arguments.
+  app.use(auditContext);
+
   app.get("/health", (_req, res) => {
     res.status(200).json({ status: "ok" });
   });
@@ -85,6 +91,7 @@ export function createApp(): Express {
   app.use("/api/v1/progress", progressRouter);
   app.use("/api/v1/modules", assessmentsRouter);
   app.use("/api/v1/analytics", analyticsRouter);
+  app.use("/api/v1/audit", auditRouter);
   app.use("/api/v1/live-sessions", liveSessionsRouter);
 
   app.use(notFoundHandler);

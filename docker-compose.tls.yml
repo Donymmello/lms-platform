@@ -11,7 +11,7 @@
 ## has to be reachable from the internet even though the site answers on 443.
 
 services:
-  proxy:
+  lms-proxy:
     ports:
       - "80:80"
       - "443:443"
