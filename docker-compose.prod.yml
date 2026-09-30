@@ -148,10 +148,14 @@ services:
       # asks for no certificate.
       SITE_ADDRESS: ${SITE_ADDRESS:-:8090}
     ports:
-      # 80 and 443 are what a real domain needs; 80 also carries the ACME
-      # challenge, so it cannot be dropped. 8090 is the plain-HTTP mode.
-      - "80:80"
-      - "443:443"
+      # Only the loopback, because a VPS that already serves a site has 80 and
+      # 443 taken: publishing them here would either fail to bind or take the
+      # existing site down. The web server already on the box proxies to this
+      # port and keeps doing the TLS it already does.
+      #
+      # To have this stack own the domain and get its own certificate instead,
+      # add docker-compose.tls.yml, which puts 80 and 443 back:
+      #   docker compose -f docker-compose.prod.yml -f docker-compose.tls.yml up -d
       - "127.0.0.1:8090:8090"
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro

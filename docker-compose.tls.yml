@@ -1,0 +1,17 @@
+## Adds the ports Caddy needs to own a domain and get its own certificate.
+##
+## Only for a machine where nothing else is serving 80 and 443. On a VPS that
+## already hosts a site, leave this out: the web server already there should
+## proxy to 127.0.0.1:8090 and keep doing the TLS it already does.
+##
+##   docker compose -f docker-compose.prod.yml -f docker-compose.tls.yml up -d
+##
+## Needs SITE_ADDRESS set to the hostname (not ":8090"), or Caddy serves plain
+## HTTP and asks for no certificate. Port 80 carries the ACME challenge, so it
+## has to be reachable from the internet even though the site answers on 443.
+
+services:
+  proxy:
+    ports:
+      - "80:80"
+      - "443:443"

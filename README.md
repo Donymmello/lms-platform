@@ -73,6 +73,40 @@ E cria os dados de demonstração, se quiseres o catálogo preenchido. Ver [Dado
 
 O Caddy pede o certificado no primeiro pedido ao domínio, o que leva alguns segundos. Se falhar, é quase sempre uma de duas coisas: o DNS ainda não propagou, ou a porta 80 está fechada na firewall, por onde passa o desafio ACME.
 
+### Se a VPS já serve outros sites
+
+O caso normal numa VPS que já tem coisas a correr: as portas 80 e 443 estão ocupadas. Por isso a stack **não as publica**. Publica só `127.0.0.1:8090`, e o servidor que já lá está encaminha para ela, continuando a tratar do TLS como já trata dos outros sites.
+
+Com Caddy como serviço do sistema, acrescenta ao `/etc/caddy/Caddyfile`:
+
+```
+demo.teudominio.com {
+	reverse_proxy localhost:8090
+}
+```
+
+Se o Caddy da VPS for um container, `localhost` dentro dele é ele próprio, não a máquina. Liga-o à rede da stack e trata pelo nome:
+
+```bash
+docker network connect <rede-do-caddy> lms_proxy
+```
+
+E no Caddyfile dele, `reverse_proxy lms_proxy:8090`.
+
+Com nginx à frente em vez de Caddy, não te esqueças do `client_max_body_size`: o valor por omissão é 1 MB e rejeita qualquer vídeo com um 413 que parece bug da aplicação. O Caddy não tem esse limite.
+
+O encaminhamento de `/api` fica dentro do repositório, no [`deploy/Caddyfile`](deploy/Caddyfile), e não no servidor da VPS. Essa divisão é o que mantém tudo na mesma origem e os cookies de sessão a funcionar; num ficheiro fora do repositório, alguém podia parti-la sem tocar no código, e o sintoma seria o login deixar de funcionar sem explicação.
+
+### Quando a stack é a única coisa na máquina
+
+Só então vale a pena deixá-la tomar as portas 80 e 443 e tirar o seu próprio certificado:
+
+```bash
+docker compose -f docker-compose.prod.yml -f docker-compose.tls.yml up -d --build
+```
+
+Nesse caso `SITE_ADDRESS` é o hostname, não `:8090`. A porta 80 tem de estar aberta na firewall mesmo com o site a responder em 443, porque é por lá que passa o desafio ACME.
+
 ### Correr o build de produção localmente
 
 O mesmo ficheiro serve, com `SITE_ADDRESS=:8090` (o valor por omissão): o Caddy serve HTTP simples em `http://localhost:8090` e não pede certificado nenhum. Serve para ver o build compilado antes de subir, mas **o login não funciona**, pela razão dos cookies `Secure` acima.
