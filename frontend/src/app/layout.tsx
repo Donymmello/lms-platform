@@ -35,6 +35,20 @@ const instrumentSerif = localFont({
   display: "swap",
 });
 
+/*
+ * Every page renders per request, which the Content-Security-Policy in
+ * middleware.ts requires: its script-src is a per-request nonce, and a page
+ * prerendered at build time carries HTML from before that nonce existed, so
+ * the browser blocks every script on it. `/` was already dynamic because it
+ * fetches the catalogue with no-store; this extends that to the rest rather
+ * than weakening the policy to `unsafe-inline` for the static pages.
+ *
+ * The cost is real but small here: almost every page is a client component
+ * fetching per-user data anyway, so prerendering only ever cached an empty
+ * shell.
+ */
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "LMS",
   description: "Plataforma de cursos online",
