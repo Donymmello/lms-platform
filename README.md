@@ -69,6 +69,18 @@ docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml exec lms-backend npx prisma migrate deploy
 ```
 
+O `--build` não é opcional numa actualização: as migrações são copiadas para dentro da imagem, logo sem reconstruir o `migrate deploy` não vê as que chegaram no `git pull`.
+
+Se o `up` falhar com `container name "/lms_mailpit" is already in use`, para a stack antes de a subir:
+
+```bash
+docker compose -f docker-compose.prod.yml down --remove-orphans
+```
+
+Acontece uma vez, a quem actualizar por cima de containers criados antes de os serviços passarem a ter nomes prefixados. O Compose acompanha containers pelo nome do serviço, logo os antigos ficam órfãos e continuam a segurar os `container_name` que os novos querem. Acrescentar `--remove-orphans` ao próprio `up` não resolve: a remoção e a criação correm ao mesmo tempo e voltam a chocar.
+
+O `down` age pela etiqueta do projecto e não pelos nomes de serviço, por isso apanha-os todos. Sem `-v` não toca em volumes — base de dados, uploads e certificados ficam — e não vê containers de outros projectos na máquina.
+
 E cria os dados de demonstração, se quiseres o catálogo preenchido. Ver [Dados de demonstração](#dados-de-demonstração).
 
 O Caddy pede o certificado no primeiro pedido ao domínio, o que leva alguns segundos. Se falhar, é quase sempre uma de duas coisas: o DNS ainda não propagou, ou a porta 80 está fechada na firewall, por onde passa o desafio ACME.
