@@ -3,6 +3,7 @@ import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { env } from "./config/env";
+import { generalRateLimiter } from "./middlewares/rateLimiter";
 import { analyticsRouter } from "./modules/analytics/analytics.routes";
 import { authRouter } from "./modules/auth/auth.routes";
 import { usersRouter } from "./modules/users/users.routes";
@@ -18,6 +19,25 @@ import { errorHandler, notFoundHandler } from "./middlewares/errorHandler";
 
 export function createApp(): Express {
   const app = express();
+
+  /*
+   * Behind a reverse proxy, req.ip is the proxy's address unless Express is
+   * told to read X-Forwarded-For. That is not cosmetic: the rate limiters are
+   * keyed by IP, so without this every request in the world shares one
+   * counter, and ten failed logins from anyone lock out everybody. The
+   * defence turns into a denial of service against its own users.
+   *
+   * "uniquelocal" trusts hops from loopback and private ranges, which is
+   * exactly the container chain (this app, its own proxy, and whatever proxy
+   * the host already runs) and never a client on the public internet. It is
+   * right for one hop or three without a magic number to keep in step with
+   * the deployment, and harmless in development where there is no proxy and
+   * no X-Forwarded-For to read.
+   *
+   * Safe because the backend publishes no port in production: only the proxy
+   * can reach it, so nothing else is in a position to forge the header.
+   */
+  app.set("trust proxy", "uniquelocal");
 
   // Security headers
   app.use(helmet());
@@ -46,6 +66,10 @@ export function createApp(): Express {
   );
   app.use(express.urlencoded({ extended: true, limit: "10kb" }));
   app.use(cookieParser());
+
+  // After the body parsers so a rejected request still costs the client its
+  // slot, and before the routes so every one of them is covered.
+  app.use(generalRateLimiter);
 
   app.get("/health", (_req, res) => {
     res.status(200).json({ status: "ok" });

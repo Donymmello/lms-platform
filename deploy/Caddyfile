@@ -1,3 +1,21 @@
+{
+	# Preserve the client IP that an upstream proxy already recorded.
+	#
+	# Caddy does not trust an incoming X-Forwarded-For by default, and it is
+	# right not to: anyone could forge it. But on a VPS this sits behind the
+	# web server already on the box, so the header arriving from a private
+	# address is that server reporting the real visitor. Discarding it makes
+	# every request look like it came from the proxy, and the backend's
+	# per-IP rate limits then share one counter across the whole internet —
+	# ten failed logins from anybody would lock out everyone.
+	#
+	# Only private ranges are trusted, which on this host is the proxy
+	# container and nothing reachable from outside.
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
 # One origin in front of both services: the app at the root, the API under
 # /api. The browser only ever sees one scheme, host and port, which is what
 # keeps the SameSite=Lax session cookies working.
