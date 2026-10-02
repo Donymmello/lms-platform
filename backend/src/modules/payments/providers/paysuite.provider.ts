@@ -9,7 +9,12 @@ import {
   WebhookOutcome,
 } from "./payment-gateway.interface";
 
-type PaySuiteMethod = "mpesa" | "emola";
+/**
+ * The values PaySuite's `method` field accepts. `credit_card` covers both Visa
+ * and Mastercard — PaySuite has no separate value per network, so neither do
+ * we.
+ */
+type PaySuiteMethod = "mpesa" | "emola" | "credit_card";
 
 interface PaySuiteCreatePaymentResponse {
   status: string;
@@ -34,10 +39,10 @@ interface PaySuiteWebhookPayload {
 /**
  * PaySuite (https://paysuite.tech) is a Mozambican payment aggregator that
  * exposes M-Pesa, e-Mola and card payments behind one API — a single
- * account-level `webhook_url`/API key covers both mobile-money rails, the
- * only difference is the `method` field sent when creating a payment. That's
- * why one class serves both PaymentProvider.MPESA and .EMOLA (see
- * providers/index.ts) instead of two near-identical ones.
+ * account-level `webhook_url`/API key covers all three rails, the only
+ * difference being the `method` field sent when creating a payment. That is
+ * why one class serves MPESA, EMOLA and CARD (see providers/index.ts) instead
+ * of three near-identical ones.
  */
 export class PaySuiteGateway implements PaymentGateway {
   constructor(private readonly method: PaySuiteMethod) {}

@@ -26,6 +26,9 @@ const GHOST_BUTTON =
 const PROVIDERS: { value: PaymentProvider; label: string }[] = [
   { value: "MPESA", label: "M-Pesa" },
   { value: "EMOLA", label: "e-Mola" },
+  // Visa and Mastercard both go through PaySuite's `credit_card` method, so
+  // one button covers them: the card network is picked on their page, not here.
+  { value: "CARD", label: "Cartão" },
   { value: "PAYPAL", label: "PayPal" },
 ];
 
@@ -191,7 +194,7 @@ export function EnrollButton({ courseId, courseSlug, priceCents }: EnrollButtonP
         <p className="text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
           Ou paga só este agora
         </p>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {PROVIDERS.map((option) => (
             <button
               key={option.value}

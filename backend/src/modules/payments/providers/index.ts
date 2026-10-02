@@ -5,6 +5,7 @@ import { PayPalGateway } from "./paypal.provider";
 
 const mpesaGateway = new PaySuiteGateway("mpesa");
 const emolaGateway = new PaySuiteGateway("emola");
+const cardGateway = new PaySuiteGateway("credit_card");
 const paypalGateway = new PayPalGateway();
 
 export function getPaymentGateway(provider: PaymentProvider): PaymentGateway {
@@ -13,6 +14,8 @@ export function getPaymentGateway(provider: PaymentProvider): PaymentGateway {
       return mpesaGateway;
     case PaymentProvider.EMOLA:
       return emolaGateway;
+    case PaymentProvider.CARD:
+      return cardGateway;
     case PaymentProvider.PAYPAL:
       return paypalGateway;
   }

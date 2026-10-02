@@ -412,6 +412,9 @@ model Enrollment {
 enum PaymentProvider {
   MPESA
   EMOLA
+  /// Visa and Mastercard, through PaySuite's hosted page. PaySuite calls this
+  /// method `credit_card`; there is no separate value per card network.
+  CARD
   PAYPAL
 }
 

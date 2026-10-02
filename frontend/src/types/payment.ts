@@ -1,4 +1,5 @@
-export type PaymentProvider = "MPESA" | "EMOLA" | "PAYPAL";
+/** CARD is Visa and Mastercard, which PaySuite handles on its own page. */
+export type PaymentProvider = "MPESA" | "EMOLA" | "CARD" | "PAYPAL";
 export type PaymentStatus = "PENDING" | "COMPLETED" | "FAILED" | "CANCELLED";
 
 export interface CheckoutResult {

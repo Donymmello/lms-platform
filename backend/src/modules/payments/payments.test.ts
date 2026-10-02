@@ -504,3 +504,21 @@ describe("checkout with a cart", () => {
     expect(byCourse[b.id]).toBe(30_000);
   });
 });
+
+describe("card payments", () => {
+  it("routes a card payment through PaySuite like the mobile wallets do", async () => {
+    const course = await pricedCourse(50_000);
+    const buyer = await createUser();
+
+    const response = await request(app)
+      .post("/api/v1/payments/checkout")
+      .set("Cookie", authCookie(buyer))
+      .send({ courseIds: [course.id], provider: PaymentProvider.CARD });
+
+    expect(response.status).toBe(201);
+    const payment = await prisma.payment.findFirst();
+    // One PaySuite account covers M-Pesa, e-Mola and card; only the `method`
+    // sent when creating the payment differs.
+    expect(payment!.provider).toBe(PaymentProvider.CARD);
+  });
+});
