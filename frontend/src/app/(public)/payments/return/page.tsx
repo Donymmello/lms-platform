@@ -76,7 +76,12 @@ function ReturnContent() {
         <CheckCircle2 className="h-10 w-10 text-emerald-600" />
         <div>
           <p className="text-lg font-semibold">Pagamento confirmado</p>
-          <p className="text-muted-foreground">Já estás inscrito em {payment.courseTitle}.</p>
+          {/* A payment can cover a cart, so name one course or count them. */}
+          <p className="text-muted-foreground">
+            {payment.items.length === 1
+              ? `Já estás inscrito em ${payment.items[0]!.courseTitle}.`
+              : `Já estás inscrito nos ${payment.items.length} cursos que pagaste.`}
+          </p>
         </div>
         <Button asChild>
           <Link href="/student/courses">Ir para os meus cursos</Link>

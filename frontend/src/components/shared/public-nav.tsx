@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { ShoppingCart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useCart } from "@/hooks/useCart";
 import { homePathForRole } from "@/lib/routes";
 
 export function PublicNav() {
   const router = useRouter();
   const { user, isLoading, logout } = useAuth();
+  const { count: cartCount } = useCart();
 
   async function handleLogout() {
     await logout();
@@ -32,6 +35,25 @@ export function PublicNav() {
           >
             Catálogo
           </Link>
+
+          {/*
+            Only once there is something in it. An empty cart icon on every
+            page is a nag; a count is information.
+          */}
+          {cartCount > 0 && (
+            <Link
+              href="/carrinho"
+              className="focus-ring relative rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              <ShoppingCart className="h-4 w-4" />
+              <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[0.6rem] font-medium tabular-nums text-primary-foreground">
+                {cartCount}
+              </span>
+              <span className="sr-only">
+                Carrinho, {cartCount} {cartCount === 1 ? "curso" : "cursos"}
+              </span>
+            </Link>
+          )}
 
           {!isLoading && (!user || user.role === "STUDENT") && (
             <Link

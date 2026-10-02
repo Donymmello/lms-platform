@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, ShoppingCart } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useCart } from "@/hooks/useCart";
 import { ApiError } from "@/services/api-client";
 import { enrollmentsService } from "@/services/enrollments.service";
 import { paymentsService } from "@/services/payments.service";
@@ -31,10 +32,12 @@ const PROVIDERS: { value: PaymentProvider; label: string }[] = [
 export function EnrollButton({ courseId, courseSlug, priceCents }: EnrollButtonProps) {
   const router = useRouter();
   const { user, isLoading } = useAuth();
+  const { add, has: isInCart } = useCart();
   const [provider, setProvider] = useState<PaymentProvider>("MPESA");
   const [status, setStatus] = useState<"checking" | "idle" | "submitting" | "enrolled">("checking");
   const [error, setError] = useState<string | null>(null);
   const isPaid = priceCents > 0;
+  const inCart = isInCart(courseId);
 
   /**
    * Asks up front whether this course is already theirs. Without it the page
@@ -90,7 +93,7 @@ export function EnrollButton({ courseId, courseSlug, priceCents }: EnrollButtonP
     setError(null);
     setStatus("submitting");
     try {
-      const checkout = await paymentsService.checkout(courseId, provider);
+      const checkout = await paymentsService.checkout([courseId], provider);
       // Full browser navigation — the destination is the gateway's own
       // hosted checkout page (PaySuite) or approval page (PayPal), not a
       // route inside this app.
@@ -164,9 +167,29 @@ export function EnrollButton({ courseId, courseSlug, priceCents }: EnrollButtonP
 
   return (
     <div className="space-y-3">
+      {/*
+        Two ways to buy, as Udemy has them. "Comprar agora" is one course in
+        one charge; the cart is for someone picking several, which matters here
+        because each charge is a separate confirmation on their phone.
+      */}
+      <button
+        type="button"
+        onClick={() => {
+          if (inCart) {
+            router.push("/carrinho");
+            return;
+          }
+          add({ id: courseId, slug: courseSlug });
+        }}
+        className={GHOST_BUTTON}
+      >
+        <ShoppingCart className="h-4 w-4" />
+        {inCart ? "Ver carrinho" : "Adicionar ao carrinho"}
+      </button>
+
       <div className="space-y-2">
         <p className="text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
-          Método de pagamento
+          Ou paga só este agora
         </p>
         <div className="grid grid-cols-3 gap-2">
           {PROVIDERS.map((option) => (
