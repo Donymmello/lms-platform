@@ -98,7 +98,8 @@ model Course {
 
   modules      CourseModule[]
   enrollments  Enrollment[]
-  payments     Payment[]
+  /// Through the items, because a payment can cover several courses at once.
+  paymentItems PaymentItem[]
   liveSessions LiveSession[]
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
@@ -397,12 +398,14 @@ model Enrollment {
   courseId  String
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   /// The payment that unlocked this enrollment, if any (null for free courses).
-  paymentId String?  @unique
+  /// Not unique: one cart payment unlocks every course that was in it.
+  paymentId String?
   payment   Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
 
   @@unique([userId, courseId])
   @@index([courseId])
+  @@index([paymentId])
   @@map("enrollments")
 }
 
@@ -426,25 +429,48 @@ enum PaymentStatus {
 /// gateway's own id (PaySuite payment ULID / PayPal order id), used to
 /// correlate webhook callbacks back to this row. `rawPayload` keeps the last
 /// webhook body for audits — it is never trusted over the verified fields.
+/// One trip to a gateway, covering one or more courses.
+///
+/// A cart is why this is not one payment per course: every M-Pesa charge is a
+/// USSD confirmation on the buyer's phone, so three courses bought together
+/// have to be one charge, not three.
 model Payment {
   id            String          @id @default(uuid())
   userId        String
   user          User            @relation(fields: [userId], references: [id], onDelete: Restrict)
-  courseId      String
-  course        Course          @relation(fields: [courseId], references: [id], onDelete: Restrict)
   provider      PaymentProvider
   status        PaymentStatus   @default(PENDING)
+  /// The total actually sent to the gateway — the sum of the items below, kept
+  /// as its own column because it is what the gateway was told and must not
+  /// change if a course is repriced afterwards.
   amountCents   Int
   currency      String          @default("MZN")
   reference     String          @unique
   providerTxnId String?
   rawPayload    Json?
-  enrollment    Enrollment?
+  items         PaymentItem[]
+  enrollments   Enrollment[]
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
   @@index([userId])
-  @@index([courseId])
   @@index([providerTxnId])
   @@map("payments")
+}
+
+/// One course inside a payment, at the price it had when the buyer paid.
+model PaymentItem {
+  id        String  @id @default(uuid())
+  paymentId String
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course  @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  /// Copied from the course rather than read back from it later: a course that
+  /// goes on sale next week must not rewrite what someone paid.
+  amountCents Int
+
+  /// The same course cannot be in one payment twice.
+  @@unique([paymentId, courseId])
+  @@index([courseId])
+  @@map("payment_items")
 }

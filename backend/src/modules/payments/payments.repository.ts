@@ -1,21 +1,28 @@
 import { Payment, PaymentProvider, PaymentStatus, Prisma } from "@prisma/client";
 import { prisma } from "../../database/prisma";
 
-export type PaymentWithCourse = Prisma.PaymentGetPayload<{
-  include: { course: { select: { title: true } } };
-}>;
+const withItems = {
+  items: { include: { course: { select: { id: true, title: true, slug: true } } } },
+} satisfies Prisma.PaymentInclude;
+
+export type PaymentWithItems = Prisma.PaymentGetPayload<{ include: typeof withItems }>;
 
 export const paymentsRepository = {
+  /** One payment and its courses, written together so a half-made cart cannot exist. */
   create(data: {
     userId: string;
-    courseId: string;
     provider: PaymentProvider;
     amountCents: number;
     currency: string;
     reference: string;
     providerTxnId: string;
-  }): Promise<Payment> {
-    return prisma.payment.create({ data });
+    items: { courseId: string; amountCents: number }[];
+  }): Promise<PaymentWithItems> {
+    const { items, ...payment } = data;
+    return prisma.payment.create({
+      data: { ...payment, items: { create: items } },
+      include: withItems,
+    });
   },
 
   findByReference(reference: string): Promise<Payment | null> {
@@ -27,9 +34,17 @@ export const paymentsRepository = {
     return prisma.payment.findFirst({ where: { providerTxnId } });
   },
 
+  findWithItems(id: string): Promise<PaymentWithItems | null> {
+    return prisma.payment.findUnique({ where: { id }, include: withItems });
+  },
+
+  /**
+   * Whether this user has already paid for this course, in any payment —
+   * including one where it shared a cart with others.
+   */
   findCompletedForUserAndCourse(userId: string, courseId: string): Promise<Payment | null> {
     return prisma.payment.findFirst({
-      where: { userId, courseId, status: PaymentStatus.COMPLETED },
+      where: { userId, status: PaymentStatus.COMPLETED, items: { some: { courseId } } },
     });
   },
 
@@ -40,10 +55,10 @@ export const paymentsRepository = {
     });
   },
 
-  findManyForUser(userId: string): Promise<PaymentWithCourse[]> {
+  findManyForUser(userId: string): Promise<PaymentWithItems[]> {
     return prisma.payment.findMany({
       where: { userId },
-      include: { course: { select: { title: true } } },
+      include: withItems,
       orderBy: { createdAt: "desc" },
     });
   },

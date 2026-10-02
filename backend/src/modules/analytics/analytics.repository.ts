@@ -29,14 +29,21 @@ export const analyticsRepository = {
     });
   },
 
-  /** Revenue + payment count per course, COMPLETED only, in one grouped query. */
+  /**
+   * Revenue + purchase count per course, COMPLETED only, in one grouped query.
+   *
+   * Grouped over the items rather than the payments, and summing the item's
+   * amount rather than the payment's: since a cart pays for several courses at
+   * once, the payment total belongs to no single course. Using it would credit
+   * the whole cart to each course in it.
+   */
   async sumCompletedPaymentsByCourse(
     courseIds: string[]
   ): Promise<Record<string, { revenueCents: number; payments: number }>> {
     if (courseIds.length === 0) return {};
-    const rows = await prisma.payment.groupBy({
+    const rows = await prisma.paymentItem.groupBy({
       by: ["courseId"],
-      where: { courseId: { in: courseIds }, status: PaymentStatus.COMPLETED },
+      where: { courseId: { in: courseIds }, payment: { status: PaymentStatus.COMPLETED } },
       _sum: { amountCents: true },
       _count: { _all: true },
     });
@@ -87,15 +94,18 @@ export const analyticsRepository = {
     since: Date
   ): Promise<{ createdAt: Date; amountCents: number }[]> {
     if (courseIds.length === 0) return Promise.resolve([]);
-    return prisma.payment.findMany({
-      where: {
-        courseId: { in: courseIds },
-        status: PaymentStatus.COMPLETED,
-        createdAt: { gte: since },
-      },
-      select: { createdAt: true, amountCents: true },
-      orderBy: { createdAt: "asc" },
-    });
+    // Items again, for the same reason: only the part of a cart that belongs
+    // to these courses counts towards their revenue.
+    return prisma.paymentItem
+      .findMany({
+        where: {
+          courseId: { in: courseIds },
+          payment: { status: PaymentStatus.COMPLETED, createdAt: { gte: since } },
+        },
+        select: { amountCents: true, payment: { select: { createdAt: true } } },
+        orderBy: { payment: { createdAt: "asc" } },
+      })
+      .then((rows) => rows.map((row) => ({ createdAt: row.payment.createdAt, amountCents: row.amountCents })));
   },
 
   /** Total lessons per course — the denominator for completion rate. */

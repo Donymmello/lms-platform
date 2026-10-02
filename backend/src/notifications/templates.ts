@@ -88,24 +88,42 @@ export function enrollmentEmail(name: string, courseTitle: string, courseSlug: s
   };
 }
 
+/**
+ * One receipt for the whole charge, however many courses it covered. A cart
+ * paid in one go should not arrive as three separate emails.
+ */
 export function paymentReceiptEmail(
   name: string,
-  courseTitle: string,
-  courseSlug: string,
+  courses: { title: string; slug: string }[],
   amountCents: number,
   currency: string
 ): RenderedEmail {
-  const url = `${env.PUBLIC_APP_URL}/student/courses/${courseSlug}`;
   const amount = (amountCents / 100).toLocaleString("pt-MZ", { style: "currency", currency });
+  const isSingle = courses.length === 1;
+  const titles = courses.map((course) => course.title);
+
+  // One course goes straight to it. Several go to the list, because there is
+  // no single right destination.
+  const url = isSingle
+    ? `${env.PUBLIC_APP_URL}/student/courses/${courses[0]!.slug}`
+    : `${env.PUBLIC_APP_URL}/student/courses`;
+
+  const body = isSingle
+    ? paragraph(`O curso <strong>${titles[0]}</strong> já está disponível na tua área.`)
+    : paragraph("Já tens disponíveis na tua área:") +
+      `<ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.6">${titles
+        .map((title) => `<li>${title}</li>`)
+        .join("")}</ul>`;
 
   return {
-    subject: `Pagamento confirmado — ${courseTitle}`,
+    subject: isSingle
+      ? `Pagamento confirmado — ${titles[0]}`
+      : `Pagamento confirmado — ${courses.length} cursos`,
     html: layout(
       "Pagamento confirmado",
-      paragraph(`Olá, ${name}. Recebemos o teu pagamento de <strong>${amount}</strong>.`) +
-        paragraph(`O curso <strong>${courseTitle}</strong> já está disponível na tua área.`),
-      { label: "Ir para o curso", url }
+      paragraph(`Olá, ${name}. Recebemos o teu pagamento de <strong>${amount}</strong>.`) + body,
+      { label: isSingle ? "Ir para o curso" : "Ir para os meus cursos", url }
     ),
-    text: `Olá, ${name}\n\nPagamento de ${amount} confirmado. ${courseTitle} já está disponível em ${url}`,
+    text: `Olá, ${name}\n\nPagamento de ${amount} confirmado.\n${titles.join("\n")}\n\n${url}`,
   };
 }

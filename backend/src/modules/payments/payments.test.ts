@@ -46,7 +46,7 @@ describe("POST /payments/checkout", () => {
     const response = await request(app)
       .post("/api/v1/payments/checkout")
       .set("Cookie", authCookie(buyer))
-      .send({ courseId: course.id, provider: PaymentProvider.MPESA });
+      .send({ courseIds: [course.id], provider: PaymentProvider.MPESA });
 
     expect(response.status).toBe(201);
     expect(response.body.data.checkout.redirectUrl).toBe("https://gateway.test/checkout/abc");
@@ -70,7 +70,7 @@ describe("POST /payments/checkout", () => {
     await request(app)
       .post("/api/v1/payments/checkout")
       .set("Cookie", authCookie(buyer))
-      .send({ courseId: course.id, provider: PaymentProvider.MPESA, amountCents: 1 });
+      .send({ courseIds: [course.id], provider: PaymentProvider.MPESA, amountCents: 1 });
 
     expect(gateway.initiateCheckout).toHaveBeenCalledWith(
       expect.objectContaining({ amountCents: 75_000 })
@@ -86,7 +86,7 @@ describe("POST /payments/checkout", () => {
       await request(app)
         .post("/api/v1/payments/checkout")
         .set("Cookie", authCookie(buyer))
-        .send({ courseId: course.id, provider: PaymentProvider.EMOLA });
+        .send({ courseIds: [course.id], provider: PaymentProvider.EMOLA });
     }
 
     const references = (await prisma.payment.findMany()).map((payment) => payment.reference);
@@ -101,7 +101,7 @@ describe("POST /payments/checkout", () => {
     const response = await request(app)
       .post("/api/v1/payments/checkout")
       .set("Cookie", authCookie(buyer))
-      .send({ courseId: course.id, provider: PaymentProvider.MPESA });
+      .send({ courseIds: [course.id], provider: PaymentProvider.MPESA });
 
     expect(response.status).toBe(403);
   });
@@ -117,7 +117,7 @@ describe("POST /payments/checkout", () => {
     const response = await request(app)
       .post("/api/v1/payments/checkout")
       .set("Cookie", authCookie(buyer))
-      .send({ courseId: course.id, provider: PaymentProvider.MPESA });
+      .send({ courseIds: [course.id], provider: PaymentProvider.MPESA });
 
     expect(response.status).toBe(403);
   });
@@ -130,7 +130,7 @@ describe("POST /payments/checkout", () => {
     const response = await request(app)
       .post("/api/v1/payments/checkout")
       .set("Cookie", authCookie(buyer))
-      .send({ courseId: course.id, provider: PaymentProvider.MPESA });
+      .send({ courseIds: [course.id], provider: PaymentProvider.MPESA });
 
     expect(response.status).toBe(409);
     expect(gateway.initiateCheckout).not.toHaveBeenCalled();
@@ -144,7 +144,7 @@ describe("POST /payments/checkout", () => {
     const response = await request(app)
       .post("/api/v1/payments/checkout")
       .set("Cookie", authCookie(buyer))
-      .send({ courseId: course.id, provider: PaymentProvider.MPESA });
+      .send({ courseIds: [course.id], provider: PaymentProvider.MPESA });
 
     expect(response.status).toBe(409);
   });
@@ -155,11 +155,11 @@ describe("POST /payments/checkout", () => {
 
     const anonymous = await request(app)
       .post("/api/v1/payments/checkout")
-      .send({ courseId: course.id, provider: PaymentProvider.MPESA });
+      .send({ courseIds: [course.id], provider: PaymentProvider.MPESA });
     const badProvider = await request(app)
       .post("/api/v1/payments/checkout")
       .set("Cookie", authCookie(buyer))
-      .send({ courseId: course.id, provider: "BITCOIN" });
+      .send({ courseIds: [course.id], provider: "BITCOIN" });
 
     expect(anonymous.status).toBe(401);
     expect(badProvider.status).toBe(400);
@@ -372,14 +372,135 @@ describe("GET /payments/me", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data.payments).toHaveLength(1);
-    expect(response.body.data.payments[0]).toMatchObject({
-      amountCents: 50_000,
-      courseTitle: course.title,
-    });
+    expect(response.body.data.payments[0]).toMatchObject({ amountCents: 50_000 });
+    // The courses moved into items, because one payment can cover several.
+    expect(response.body.data.payments[0].items).toEqual([
+      expect.objectContaining({ courseId: course.id, courseTitle: course.title, amountCents: 50_000 }),
+    ]);
   });
 
   it("requires a session", async () => {
     const response = await request(app).get("/api/v1/payments/me");
     expect(response.status).toBe(401);
+  });
+});
+
+describe("checkout with a cart", () => {
+  /** Buys several courses in one charge, as the cart does. */
+  function checkout(courseIds: string[], buyer: Parameters<typeof authCookie>[0]) {
+    return request(app)
+      .post("/api/v1/payments/checkout")
+      .set("Cookie", authCookie(buyer))
+      .send({ courseIds, provider: PaymentProvider.MPESA });
+  }
+
+  it("charges the sum once, not each course separately", async () => {
+    const [a, b, c] = [await pricedCourse(50_000), await pricedCourse(30_000), await pricedCourse(20_000)];
+    const buyer = await createUser();
+
+    const response = await checkout([a.id, b.id, c.id], buyer);
+
+    expect(response.status).toBe(201);
+    // One trip to the gateway: every M-Pesa charge is a confirmation on the
+    // buyer's phone, and three would be three.
+    expect(gateway.initiateCheckout).toHaveBeenCalledTimes(1);
+    expect(gateway.initiateCheckout.mock.calls[0]![0]).toMatchObject({ amountCents: 100_000 });
+
+    const payment = await prisma.payment.findFirst({ include: { items: true } });
+    expect(payment!.amountCents).toBe(100_000);
+    expect(payment!.items).toHaveLength(3);
+  });
+
+  it("records each course at its own price, so a later sale cannot rewrite history", async () => {
+    const [a, b] = [await pricedCourse(50_000), await pricedCourse(30_000)];
+    const buyer = await createUser();
+
+    await checkout([a.id, b.id], buyer);
+    await prisma.course.update({ where: { id: a.id }, data: { priceCents: 1_000 } });
+
+    const items = await prisma.paymentItem.findMany({ orderBy: { amountCents: "desc" } });
+    expect(items.map((item) => item.amountCents)).toEqual([50_000, 30_000]);
+  });
+
+  it("unlocks every course in the cart when the payment completes", async () => {
+    const [a, b] = [await pricedCourse(50_000), await pricedCourse(30_000)];
+    const buyer = await createUser();
+    await checkout([a.id, b.id], buyer);
+
+    gateway.verifyWebhook.mockReturnValue({ kind: "completed", providerTxnId: "txn-abc" });
+    const response = await request(app)
+      .post("/api/v1/payments/webhooks/paysuite")
+      .set("x-signature", "whatever")
+      .send({ anything: true });
+
+    expect(response.status).toBe(200);
+    const enrollments = await prisma.enrollment.findMany({ where: { userId: buyer.id } });
+    expect(enrollments.map((row) => row.courseId).sort()).toEqual([a.id, b.id].sort());
+  });
+
+  it("still unlocks the rest when one course in the cart was already owned", async () => {
+    const [a, b] = [await pricedCourse(50_000), await pricedCourse(30_000)];
+    const buyer = await createUser();
+    await checkout([a.id, b.id], buyer);
+    // Enrolled by some other route between paying and the webhook arriving.
+    await enroll(buyer.id, a.id);
+
+    gateway.verifyWebhook.mockReturnValue({ kind: "completed", providerTxnId: "txn-abc" });
+    await request(app)
+      .post("/api/v1/payments/webhooks/paysuite")
+      .set("x-signature", "whatever")
+      .send({});
+
+    // The duplicate must not swallow the course that still needed unlocking.
+    const enrollments = await prisma.enrollment.findMany({ where: { userId: buyer.id } });
+    expect(enrollments).toHaveLength(2);
+  });
+
+  it("REFUSES the whole cart when one course is not buyable", async () => {
+    const good = await pricedCourse(50_000);
+    const free = await pricedCourse(0);
+    const buyer = await createUser();
+
+    const response = await checkout([good.id, free.id], buyer);
+
+    // Charging for the good half would leave the buyer unable to tell which
+    // half that was.
+    expect(response.status).toBe(403);
+    expect(await prisma.payment.count()).toBe(0);
+    expect(gateway.initiateCheckout).not.toHaveBeenCalled();
+  });
+
+  it("REFUSES the same course twice in one cart", async () => {
+    const course = await pricedCourse(50_000);
+    const buyer = await createUser();
+
+    // Would charge twice and enrol once.
+    const response = await checkout([course.id, course.id], buyer);
+
+    expect(response.status).toBe(400);
+    expect(await prisma.payment.count()).toBe(0);
+  });
+
+  it("REFUSES an empty cart", async () => {
+    const buyer = await createUser();
+    expect((await checkout([], buyer)).status).toBe(400);
+  });
+
+  it("counts a cart purchase towards each course's own revenue, not the total", async () => {
+    const [a, b] = [await pricedCourse(50_000), await pricedCourse(30_000)];
+    const buyer = await createUser();
+    await checkout([a.id, b.id], buyer);
+
+    gateway.verifyWebhook.mockReturnValue({ kind: "completed", providerTxnId: "txn-abc" });
+    await request(app).post("/api/v1/payments/webhooks/paysuite").set("x-signature", "x").send({});
+
+    const items = await prisma.paymentItem.groupBy({
+      by: ["courseId"],
+      _sum: { amountCents: true },
+    });
+    const byCourse = Object.fromEntries(items.map((row) => [row.courseId, row._sum.amountCents]));
+    // Crediting the 80 000 total to both would double the platform's revenue.
+    expect(byCourse[a.id]).toBe(50_000);
+    expect(byCourse[b.id]).toBe(30_000);
   });
 });

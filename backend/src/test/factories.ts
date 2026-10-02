@@ -100,21 +100,48 @@ export async function enroll(userId: string, courseId: string, paymentId?: strin
   await prisma.enrollment.create({ data: { userId, courseId, paymentId } });
 }
 
+/**
+ * A payment for one course, which is the common case. `amountCents` is both
+ * the payment total and the item's amount, because with one course they are
+ * the same number — see `createCartPayment` for the other shape.
+ */
 export function createPayment(
   userId: string,
   courseId: string,
   overrides: Partial<Payment> = {}
 ): Promise<Payment> {
+  const amountCents = overrides.amountCents ?? 10_000;
   return prisma.payment.create({
     data: {
       userId,
-      courseId,
       provider: overrides.provider ?? PaymentProvider.MPESA,
       status: overrides.status ?? PaymentStatus.COMPLETED,
-      amountCents: overrides.amountCents ?? 10_000,
+      amountCents,
       reference: overrides.reference ?? unique("ref"),
       providerTxnId: overrides.providerTxnId ?? unique("txn"),
       createdAt: overrides.createdAt ?? new Date(),
+      items: { create: [{ courseId, amountCents }] },
+    },
+  });
+}
+
+/** One payment covering several courses, each at its own price. */
+export function createCartPayment(
+  userId: string,
+  items: { courseId: string; amountCents: number }[],
+  overrides: Partial<Payment> = {}
+): Promise<Payment> {
+  return prisma.payment.create({
+    data: {
+      userId,
+      provider: overrides.provider ?? PaymentProvider.MPESA,
+      status: overrides.status ?? PaymentStatus.COMPLETED,
+      // The total is what the gateway was told: the sum of the parts.
+      amountCents: items.reduce((total, item) => total + item.amountCents, 0),
+      reference: overrides.reference ?? unique("ref"),
+      providerTxnId: overrides.providerTxnId ?? unique("txn"),
+      createdAt: overrides.createdAt ?? new Date(),
+      items: { create: items },
     },
   });
 }

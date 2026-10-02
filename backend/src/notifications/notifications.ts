@@ -46,21 +46,16 @@ export const notifications = {
     dispatch(mailer.send({ to: user.email, ...enrollmentEmail(user.name, course.title, course.slug) }));
   },
 
+  /** One receipt for the charge, listing every course it covered. */
   paymentCompleted(
     user: { name: string; email: string },
-    course: { title: string; slug: string },
+    courses: { title: string; slug: string }[],
     payment: { amountCents: number; currency: string }
   ): void {
     dispatch(
       mailer.send({
         to: user.email,
-        ...paymentReceiptEmail(
-          user.name,
-          course.title,
-          course.slug,
-          payment.amountCents,
-          payment.currency
-        ),
+        ...paymentReceiptEmail(user.name, courses, payment.amountCents, payment.currency),
       })
     );
   },

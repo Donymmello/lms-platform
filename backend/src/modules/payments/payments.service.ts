@@ -33,49 +33,81 @@ async function requirePublishedPricedCourse(courseId: string) {
   return course;
 }
 
-/** Marks a payment COMPLETED and unlocks the course, tolerating a race with any other path that already enrolled the user. */
-async function completePayment(paymentId: string, rawPayload?: unknown): Promise<void> {
-  const payment = await paymentsRepository.updateStatus(paymentId, PaymentStatus.COMPLETED, rawPayload);
+/** True for Prisma's unique-constraint violation, which here means "already enrolled". */
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === "P2002"
+  );
+}
 
-  try {
-    await enrollmentsRepository.create(payment.userId, payment.courseId, payment.id);
-  } catch (error) {
-    const isUniqueViolation =
-      typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === "P2002";
-    if (!isUniqueViolation) {
-      throw error;
+/**
+ * Marks a payment COMPLETED and unlocks every course it covered.
+ *
+ * Each enrolment is attempted on its own and a duplicate is swallowed per
+ * course, not for the payment as a whole: a cart where the buyer already owned
+ * one of the courses must still unlock the others, and a webhook delivered
+ * twice must not fail the second time.
+ */
+async function completePayment(paymentId: string, rawPayload?: unknown): Promise<void> {
+  await paymentsRepository.updateStatus(paymentId, PaymentStatus.COMPLETED, rawPayload);
+
+  const payment = await paymentsRepository.findWithItems(paymentId);
+  if (!payment) return;
+
+  for (const item of payment.items) {
+    try {
+      await enrollmentsRepository.create(payment.userId, item.courseId, payment.id);
+    } catch (error) {
+      if (!isUniqueViolation(error)) {
+        throw error;
+      }
     }
   }
 
-  // The money has cleared and the course is unlocked either way; the receipt
+  // The money has cleared and the courses are unlocked either way; the receipt
   // is a courtesy on top, so it must not be able to fail this function.
   if (mailer.isEnabled()) {
-    const [user, course] = await Promise.all([
-      usersRepository.findById(payment.userId),
-      coursesRepository.findById(payment.courseId),
-    ]);
-    if (user && course) {
-      notifications.paymentCompleted(user, course, {
-        amountCents: payment.amountCents,
-        currency: payment.currency,
-      });
+    const user = await usersRepository.findById(payment.userId);
+    if (user) {
+      notifications.paymentCompleted(
+        user,
+        payment.items.map((item) => ({ title: item.course.title, slug: item.course.slug })),
+        { amountCents: payment.amountCents, currency: payment.currency }
+      );
     }
   }
 }
 
 export const paymentsService = {
+  /**
+   * Starts one charge covering one course or a cartful.
+   *
+   * Every course is checked before anything is sent to the gateway: a cart
+   * that is part-invalid is refused whole rather than charging for the good
+   * half, because the buyer cannot see which half that was.
+   */
   async checkout(input: CreateCheckoutInput, actingUser: AuthenticatedUser): Promise<CheckoutResultDto> {
-    const course = await requirePublishedPricedCourse(input.courseId);
+    const courses = await Promise.all(input.courseIds.map(requirePublishedPricedCourse));
 
-    const alreadyEnrolled = await enrollmentsRepository.findByUserAndCourse(actingUser.id, course.id);
-    if (alreadyEnrolled) {
-      throw new ConflictError("You are already enrolled in this course");
+    for (const course of courses) {
+      const alreadyEnrolled = await enrollmentsRepository.findByUserAndCourse(actingUser.id, course.id);
+      if (alreadyEnrolled) {
+        throw new ConflictError(`You are already enrolled in "${course.title}"`);
+      }
+
+      const alreadyPaid = await paymentsRepository.findCompletedForUserAndCourse(actingUser.id, course.id);
+      if (alreadyPaid) {
+        throw new ConflictError(`You have already paid for "${course.title}"`);
+      }
     }
 
-    const alreadyPaid = await paymentsRepository.findCompletedForUserAndCourse(actingUser.id, course.id);
-    if (alreadyPaid) {
-      throw new ConflictError("You have already paid for this course");
-    }
+    const amountCents = courses.reduce((total, course) => total + course.priceCents, 0);
+    // What the gateway shows the buyer on their phone. One title fits; a cart
+    // has to be summarised, because the field is short.
+    const description =
+      courses.length === 1
+        ? courses[0]!.title.slice(0, 125)
+        : `${courses.length} cursos`.slice(0, 125);
 
     const reference = newReference();
     const gateway = getPaymentGateway(input.provider);
@@ -83,8 +115,8 @@ export const paymentsService = {
 
     const checkout = await gateway.initiateCheckout({
       reference,
-      amountCents: course.priceCents,
-      description: course.title.slice(0, 125),
+      amountCents,
+      description,
       returnUrl: isPaypal
         ? `${env.PUBLIC_APP_URL}/payments/paypal/return?reference=${reference}`
         : `${env.PUBLIC_APP_URL}/payments/return?reference=${reference}`,
@@ -93,12 +125,14 @@ export const paymentsService = {
 
     const payment = await paymentsRepository.create({
       userId: actingUser.id,
-      courseId: course.id,
       provider: input.provider,
-      amountCents: course.priceCents,
+      amountCents,
       currency: "MZN",
       reference,
       providerTxnId: checkout.providerTxnId,
+      // The price is copied in, not read back from the course later: a course
+      // that goes on sale next week must not rewrite what someone paid.
+      items: courses.map((course) => ({ courseId: course.id, amountCents: course.priceCents })),
     });
 
     return {
@@ -165,8 +199,12 @@ export const paymentsService = {
       status: payment.status,
       amountCents: payment.amountCents,
       currency: payment.currency,
-      courseId: payment.courseId,
-      courseTitle: payment.course.title,
+      items: payment.items.map((item) => ({
+        courseId: item.courseId,
+        courseTitle: item.course.title,
+        courseSlug: item.course.slug,
+        amountCents: item.amountCents,
+      })),
       createdAt: payment.createdAt,
     }));
   },
