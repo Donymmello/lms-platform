@@ -5,7 +5,13 @@
 # `frontend` and gets whichever container answers first. That took a live site
 # down once; see "Se a VPS já serve outros sites" in the README.
 #
-version: '3.8'
+# No `container_name:` anywhere on purpose. A fixed name is global to the
+# Docker daemon, so the stack refuses to start if any other project — or a
+# leftover container from an older version of this one — already holds it
+# ("Conflict. The container name /lms_mailpit is already in use"). Compose
+# generates `<projecto>-<serviço>-1` instead, which is unique per project and
+# per instance. Address containers through compose (`docker compose exec
+# lms-backend ...`), never by a hand-written name.
 
 services:
   # --- BANCO DE DADOS (PostgreSQL) ---
@@ -16,7 +22,6 @@ services:
     # created by an older major version. Pinning avoids that class of
     # breakage entirely and keeps the image reproducible across machines.
     image: postgres:16-alpine
-    container_name: lms_postgres
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-lms_user}
@@ -39,7 +44,6 @@ services:
   # --- GERENCIADOR DO BANCO (Adminer) ---
   lms-adminer:
     image: adminer
-    container_name: lms_adminer
     restart: always
     ports:
       - "8080:8080"
@@ -53,7 +57,6 @@ services:
   # cannot accidentally write to a customer.
   lms-mailpit:
     image: axllent/mailpit:latest
-    container_name: lms_mailpit
     restart: always
     ports:
       - "${MAILPIT_UI_PORT:-8025}:8025"
@@ -63,14 +66,23 @@ services:
 
   # --- BACKEND (Node.js + Express + Prisma) ---
   lms-backend:
+    # Named explicitly so the development and production files do not overwrite
+    # each other's images. Without this both build to the same tag, and a
+    # `up -d` after building the other one silently runs the wrong target —
+    # the production command against a bind mount with no `dist/` in it.
+    image: lms-platform-backend:dev
     build:
       context: ./backend
       dockerfile: Dockerfile
       target: dev
-    container_name: lms_backend
     restart: always
     ports:
-      - "5000:5000"
+      # Overridable because 5000 is a popular number: another project on the
+      # same machine holding it makes this one fail to start with nothing but
+      # "port is already allocated" to go on. Change BACKEND_HOST_PORT in .env
+      # and NEXT_PUBLIC_API_URL to match, since the browser talks to this port
+      # directly in development.
+      - "${BACKEND_HOST_PORT:-5000}:5000"
     environment:
       NODE_ENV: development
       PORT: 5000
@@ -123,11 +135,15 @@ services:
 
   # --- FRONTEND (Next.js App Router) ---
   lms-frontend:
+    # Named explicitly so the development and production files do not overwrite
+    # each other's images. Without this both build to the same tag, and a
+    # `up -d` after building the other one silently runs the wrong target —
+    # the production command against a bind mount with no `dist/` in it.
+    image: lms-platform-frontend:dev
     build:
       context: ./frontend
       dockerfile: Dockerfile
       target: dev
-    container_name: lms_frontend
     restart: always
     ports:
       - "3000:3000"

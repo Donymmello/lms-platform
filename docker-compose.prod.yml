@@ -13,8 +13,8 @@
 #   docker compose -f docker-compose.prod.yml up -d --build
 #
 # Both files use the same project and the same named volumes, so the database
-# and the uploads carry over — but they claim the same container names, so only
-# one of the two can run at a time.
+# and the uploads carry over — but they define the same services under the same
+# project, so only one of the two can run at a time.
 #
 # Differences from the dev stack, all deliberate:
 #
@@ -36,10 +36,18 @@
 #     over HTTPS. Reaching this straight on http://localhost:3000 will look
 #     broken at login — go in through the tunnel's HTTPS address.
 
+#
+# No `container_name:` anywhere on purpose. A fixed name is global to the
+# Docker daemon, so the stack refuses to start if any other project — or a
+# leftover container from an older version of this one — already holds it
+# ("Conflict. The container name /lms_mailpit is already in use"). Compose
+# generates `<projecto>-<serviço>-1` instead, which is unique per project and
+# per instance. Address containers through compose (`docker compose exec
+# lms-backend ...`), never by a hand-written name.
+
 services:
   lms-postgres:
     image: postgres:16-alpine
-    container_name: lms_postgres
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-lms_user}
@@ -59,15 +67,16 @@ services:
   # and then stop doing that.
   lms-mailpit:
     image: axllent/mailpit:latest
-    container_name: lms_mailpit
     restart: always
 
   lms-backend:
+    # See the note in docker-compose.yml: distinct tags keep the two files from
+    # overwriting each other's images.
+    image: lms-platform-backend:prod
     build:
       context: ./backend
       dockerfile: Dockerfile
       target: runner
-    container_name: lms_backend
     restart: always
     # No published port: the proxy reaches it over the compose network, and
     # nothing else should.
@@ -120,6 +129,9 @@ services:
         condition: service_healthy
 
   lms-frontend:
+    # See the note in docker-compose.yml: distinct tags keep the two files from
+    # overwriting each other's images.
+    image: lms-platform-frontend:prod
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -128,7 +140,6 @@ services:
         # Baked into the browser bundle. Must be reachable from the visitor's
         # browser, which localhost is not.
         NEXT_PUBLIC_API_URL: ${PUBLIC_ORIGIN:?set PUBLIC_ORIGIN in .env}/api/v1
-    container_name: lms_frontend
     restart: always
     environment:
       NODE_ENV: production
@@ -148,7 +159,6 @@ services:
   # Secure, so without HTTPS nobody can sign in at all.
   lms-proxy:
     image: caddy:2-alpine
-    container_name: lms_proxy
     restart: always
     environment:
       # A hostname turns on automatic HTTPS; ":8090" serves plain HTTP and

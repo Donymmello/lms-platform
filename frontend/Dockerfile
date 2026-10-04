@@ -1,68 +1,68 @@
+# Ordem das etapas importa: `docker build` sem `--target` constrói a ÚLTIMA.
+# Por isso "runner" (produção) fica no fim — um build distraído produz a
+# imagem de produção, não a de desenvolvimento.
+
 # --- ETAPA 1: Dependências ---
-    FROM node:20-alpine AS deps
-    RUN apk add --no-cache libc6-compat
-    WORKDIR /app
+FROM node:20-alpine AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
 
-    COPY package*.json ./
-    RUN npm ci
+COPY package*.json ./
+RUN npm ci
 
-    # --- ETAPA 2: Build da Aplicação ---
-    FROM node:20-alpine AS builder
-    WORKDIR /app
+# --- ETAPA 2: Build da Aplicação ---
+FROM deps AS builder
 
-    COPY --from=deps /app/node_modules ./node_modules
-    COPY . .
+COPY . .
 
-    ENV NEXT_TELEMETRY_DISABLED 1
+ENV NEXT_TELEMETRY_DISABLED 1
 
-    # NEXT_PUBLIC_* values are compiled into the browser bundle, so this has to
-    # be known now, not at container start — and it has to be an address the
-    # visitor's browser can reach. Change it and the image must be rebuilt.
-    # src/config/env.ts validates it at import time, so the build fails loudly
-    # rather than shipping a bundle that calls nowhere.
-    ARG NEXT_PUBLIC_API_URL
-    ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+# NEXT_PUBLIC_* values are compiled into the browser bundle, so this has to
+# be known now, not at container start — and it has to be an address the
+# visitor's browser can reach. Change it and the image must be rebuilt.
+# src/config/env.ts validates it at import time, so the build fails loudly
+# rather than shipping a bundle that calls nowhere.
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
-    RUN npm run build
+RUN npm run build
 
-    # --- ETAPA 3: Imagem de Produção ---
-    FROM node:20-alpine AS runner
-    WORKDIR /app
+# --- ETAPA 3: Ambiente de Desenvolvimento (usada pelo docker-compose local) ---
+# docker-compose.yml faz bind-mount de ./frontend:/app por cima desta imagem,
+# por isso este alvo corre `next dev` em vez de servir o build "standalone"
+# — a etapa "runner" abaixo não sobrevive a esse bind-mount porque `.next/`
+# compilado só existe dentro da imagem, não no código-fonte no host.
+#
+# Deriva de "deps", não de "builder": `next dev` compila a pedido, logo correr
+# `next build` aqui era tempo gasto num resultado que o bind-mount esconde.
+FROM deps AS dev
 
-    ENV NODE_ENV production
-    ENV NEXT_TELEMETRY_DISABLED 1
+COPY . .
 
-    RUN addgroup --system --gid 1001 nodejs
-    RUN adduser --system --uid 1001 nextjs
+ENV NEXT_TELEMETRY_DISABLED 1
+EXPOSE 3000
 
-    COPY --from=builder /app/public ./public
-    COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-    COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+CMD ["npm", "run", "dev"]
 
-    USER nextjs
+# --- ETAPA 4: Imagem de Produção ---
+FROM node:20-alpine AS runner
+WORKDIR /app
 
-    EXPOSE 3000
+ENV NODE_ENV production
+ENV NEXT_TELEMETRY_DISABLED 1
 
-    ENV PORT 3000
-    ENV HOSTNAME "0.0.0.0"
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
 
-    CMD ["node", "server.js"]
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-    # --- ETAPA 4: Ambiente de Desenvolvimento (usada pelo docker-compose local) ---
-    # docker-compose.yml faz bind-mount de ./frontend:/app por cima desta imagem,
-    # por isso este alvo corre `next dev` em vez de servir o build "standalone"
-    # — a etapa "runner" acima não sobrevive a esse bind-mount porque `.next/`
-    # compilado só existe dentro da imagem, não no código-fonte no host.
-    FROM node:20-alpine AS dev
-    RUN apk add --no-cache libc6-compat
-    WORKDIR /app
+USER nextjs
 
-    COPY package*.json ./
-    RUN npm ci
+EXPOSE 3000
 
-    COPY . .
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
 
-    ENV NEXT_TELEMETRY_DISABLED 1
-    EXPOSE 3000
-
-    CMD ["npm", "run", "dev"]
+CMD ["node", "server.js"]

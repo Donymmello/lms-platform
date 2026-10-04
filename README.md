@@ -28,6 +28,28 @@ O Prisma Client é regerado no arranque do container (ver o `CMD` em `backend/Do
 
 Uma coisa continua manual: **depois de adicionar uma dependência**, corre `docker compose exec lms-backend npm install` (ou reconstrói a imagem). Instalar no arranque reescreveria o `package-lock.json` do host a cada vez.
 
+### Imagens e nomes
+
+Cada ficheiro compose diz explicitamente que imagem constrói — `lms-platform-backend:dev` e `:prod`, o mesmo para o frontend. Sem isso ambos construíam para a mesma etiqueta, e um `up -d` depois de ter construído o outro corria o alvo errado: o comando de produção contra um bind mount sem `dist/` dentro, com o container em ciclo de reinício a dizer `Cannot find module '/app/dist/server.js'`.
+
+Os containers, por outro lado, **não têm nome fixo** — o Compose gera `lms-platform-lms-backend-1` e afins. Trata-os sempre pelo serviço:
+
+```bash
+docker compose exec lms-backend sh
+docker compose logs -f lms-backend
+docker compose restart lms-backend
+```
+
+Nos `Dockerfile` a etapa de produção é a **última**, de propósito: `docker build ./backend` sem `--target` produz a imagem de produção. Com a etapa de desenvolvimento no fim, o mesmo comando dava uma imagem que corre `ts-node-dev` e espera um bind mount — a diferença só aparece em execução, e parece bug da aplicação.
+
+Para correr os testes não é preciso construir nada à mão: o container de desenvolvimento já tem as devDependencies e o Prisma Client. Ver [Testes](#testes).
+
+As imagens antigas acumulam-se a cada `--build` — a anterior perde a etiqueta e fica como `<none>`. Para as varrer sem tocar nas que estão em uso:
+
+```bash
+docker image prune
+```
+
 ## Pôr numa VPS para o cliente ver
 
 Precisas de uma VPS com Docker e Compose, e de um subdomínio apontado ao IP dela. A stack traz um Caddy que tira e renova o certificado HTTPS sozinho.
@@ -71,13 +93,13 @@ docker compose -f docker-compose.prod.yml exec lms-backend npx prisma migrate de
 
 O `--build` não é opcional numa actualização: as migrações são copiadas para dentro da imagem, logo sem reconstruir o `migrate deploy` não vê as que chegaram no `git pull`.
 
-Se o `up` falhar com `container name "/lms_mailpit" is already in use`, para a stack antes de a subir:
+Se o `up` falhar por nome ou porta já em uso, para a stack antes de a subir:
 
 ```bash
 docker compose -f docker-compose.prod.yml down --remove-orphans
 ```
 
-Acontece uma vez, a quem actualizar por cima de containers criados antes de os serviços passarem a ter nomes prefixados. O Compose acompanha containers pelo nome do serviço, logo os antigos ficam órfãos e continuam a segurar os `container_name` que os novos querem. Acrescentar `--remove-orphans` ao próprio `up` não resolve: a remoção e a criação correm ao mesmo tempo e voltam a chocar.
+Acontece a quem actualizar por cima de containers criados antes de os serviços passarem a ter nomes prefixados, ou antes de o `container_name` ter sido removido. O Compose acompanha containers pelo nome do serviço, logo os antigos ficam órfãos: continuam a segurar nomes e portas que os novos querem. Acrescentar `--remove-orphans` ao próprio `up` não resolve: a remoção e a criação correm ao mesmo tempo e voltam a chocar.
 
 O `down` age pela etiqueta do projecto e não pelos nomes de serviço, por isso apanha-os todos. Sem `-v` não toca em volumes — base de dados, uploads e certificados ficam — e não vê containers de outros projectos na máquina.
 
@@ -100,10 +122,18 @@ demo.teudominio.com {
 Se o Caddy da VPS for um container, `localhost` dentro dele é ele próprio, não a máquina. Liga-o à rede da stack e trata pelo nome:
 
 ```bash
-docker network connect <rede-do-caddy> lms_proxy
+docker network connect <rede-do-caddy> $(docker compose -f docker-compose.prod.yml ps -q lms-proxy)
 ```
 
-E no Caddyfile dele, `reverse_proxy lms_proxy:8090`.
+E no Caddyfile dele, `reverse_proxy lms-proxy:8090` — com hífen, que é o nome
+do **serviço**. Os containers desta stack não têm nome fixo (ver o comentário
+no topo do `docker-compose.prod.yml`), por isso um `reverse_proxy lms_proxy:8090`
+escrito antes desta mudança deixa de resolver e o site responde 502. Verifica
+antes de actualizar:
+
+```bash
+grep -n 'lms' /opt/vektra-site/Caddyfile
+```
 
 **Atenção a um problema que isto pode causar, e já causou uma vez.** O DNS do Docker responde pelo **nome do serviço** em todas as redes a que um container pertence. Ligar o proxy a duas redes faz com que um pedido por `frontend` possa ser atendido pelo container de outro projecto — e o sintoma é 502 num site que não se tocou, ou pior, o proxy a servir a aplicação errada.
 
@@ -146,7 +176,7 @@ Se puseres a Cloudflare à frente da VPS com o proxy ligado, conta com o corte d
 ## Migrations
 
 ```bash
-docker exec lms_backend ./node_modules/.bin/prisma migrate dev --name <nome>
+docker compose exec lms-backend ./node_modules/.bin/prisma migrate dev --name <nome>
 ```
 
 ## Dados de demonstração
@@ -154,13 +184,13 @@ docker exec lms_backend ./node_modules/.bin/prisma migrate dev --name <nome>
 A área do aluno só mostra alguma coisa se houver inscrições e progresso. Para semear um cenário completo, com três cursos feitos de módulos e aulas, um a meio, um por começar e um concluído:
 
 ```bash
-docker exec lms_backend npm run seed:demo
+docker compose exec lms-backend npm run seed:demo
 ```
 
 Tudo o que cria leva um id começado em `5eed`, e o `--clean` remove exactamente isso e nada mais:
 
 ```bash
-docker exec lms_backend npm run seed:demo -- --clean
+docker compose exec lms-backend npm run seed:demo -- --clean
 ```
 
 Correr sem `--clean` limpa e volta a semear, por isso não duplica. O aluno e os cursos que espera encontrar estão no topo de `backend/seed-demo.ts`.
@@ -249,22 +279,22 @@ Os testes do backend correm contra uma base de dados Postgres real e dedicada (`
 Criar a base de teste, uma vez:
 
 ```bash
-docker exec lms_postgres psql -U lms_user -d lms_db -c "CREATE DATABASE lms_db_test OWNER lms_user;"
+docker compose exec lms-postgres psql -U lms_user -d lms_db -c "CREATE DATABASE lms_db_test OWNER lms_user;"
 ```
 
 Aplicar as migrations nela (repetir sempre que houver migrations novas):
 
 ```bash
-docker exec -e DATABASE_URL="postgresql://lms_user:lms_password@lms-postgres:5432/lms_db_test?schema=public" lms_backend ./node_modules/.bin/prisma migrate deploy
+docker compose exec -e DATABASE_URL="postgresql://lms_user:lms_password@lms-postgres:5432/lms_db_test?schema=public" lms-backend ./node_modules/.bin/prisma migrate deploy
 ```
 
 Correr a suite:
 
 ```bash
-docker exec lms_backend npm test
+docker compose exec lms-backend npm test
 ```
 
-Cobertura actual, 264 testes: autenticação, 2FA e rate limiting, recuperação de password, cursos/módulos/aulas (CRUD e ownership), materiais de aula (upload, allowlist, download com acesso verificado), avaliações de módulo (correcção, tentativas, e o gabarito que nunca chega ao aluno), inscrições, pagamentos (checkout, webhooks, captura PayPal), playback assinado, vídeo local (streaming com Range e validação do ficheiro), progresso de aulas (manual e por posição do player) e analytics.
+Cobertura actual, 289 testes: autenticação, 2FA e rate limiting, recuperação de password, cursos/módulos/aulas (CRUD e ownership), materiais de aula (upload, allowlist, download com acesso verificado), avaliações de módulo (correcção, tentativas, e o gabarito que nunca chega ao aluno), inscrições, pagamentos (checkout, webhooks, captura PayPal), playback assinado, vídeo local (streaming com Range e validação do ficheiro), progresso de aulas (manual e por posição do player) e analytics.
 
 Os gateways de pagamento (PaySuite, PayPal) são substituídos por um mock **apenas na fronteira do adaptador**. Tudo abaixo disso corre a sério: criação da linha de pagamento, desbloqueio da inscrição, idempotência de entregas repetidas, rejeição de assinatura inválida.
 
@@ -273,7 +303,7 @@ O `src/test/setup.ts` esvazia todas as tabelas antes de cada teste e recusa-se a
 ## Verificação de tipos
 
 ```bash
-docker exec lms_backend npm run typecheck
+docker compose exec lms-backend npm run typecheck
 ```
 
 Verifica `src/` e os testes. O `npm run build` exclui os testes do `dist/`.
