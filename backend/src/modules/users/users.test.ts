@@ -23,6 +23,23 @@ describe("users access control", () => {
     expect(asStudent.status).toBe(403);
     expect(asInstructor.status).toBe(403);
   });
+
+  // There used to be a self-service upgrade here, registered ahead of the
+  // ADMIN gate: any student could POST this and be publishing courses in the
+  // catalogue a second later, with nobody's approval. It was removed, and
+  // this is the guard against it coming back by accident — a student who
+  // calls it must not come out of it an instructor.
+  it("REFUSES a student trying to make themselves an instructor", async () => {
+    const student = await createUser({ role: Role.STUDENT });
+
+    const response = await request(app)
+      .post("/api/v1/users/me/become-instructor")
+      .set("Cookie", authCookie(student));
+
+    expect(response.status).not.toBe(200);
+    const after = await prisma.user.findUniqueOrThrow({ where: { id: student.id } });
+    expect(after.role).toBe(Role.STUDENT);
+  });
 });
 
 describe("GET /users", () => {

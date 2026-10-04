@@ -140,6 +140,7 @@ services:
         # Baked into the browser bundle. Must be reachable from the visitor's
         # browser, which localhost is not.
         NEXT_PUBLIC_API_URL: ${PUBLIC_ORIGIN:?set PUBLIC_ORIGIN in .env}/api/v1
+        NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL:-}
     restart: always
     environment:
       NODE_ENV: production
@@ -147,6 +148,7 @@ services:
       # tunnel and back.
       INTERNAL_API_URL: http://lms-backend:5000/api/v1
       NEXT_PUBLIC_API_URL: ${PUBLIC_ORIGIN}/api/v1
+      NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL:-}
     depends_on:
       - lms-backend
 

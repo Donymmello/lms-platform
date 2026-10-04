@@ -1,9 +1,11 @@
 import { Role } from "@prisma/client";
+import { authenticator } from "otplib";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../../app";
 import { prisma } from "../../database/prisma";
 import { authCookie, createUser } from "../../test/factories";
+import { openSecret } from "../../utils/secret-box";
 
 const app = createApp();
 
@@ -62,26 +64,24 @@ describe("what gets recorded", () => {
     expect(await events("user.activated")).toHaveLength(1);
   });
 
-  it("records the self-service instructor upgrade against the person who took it", async () => {
+  // Not every audited act is an admin acting on someone else. This one is a
+  // user acting on their own account, and it is the case that catches the
+  // actor being read too early: `auditContext` is established before
+  // `authenticate` runs, so capturing `req.user` at that moment gives an
+  // empty actor on every self-service event.
+  it("names the user who acted on their own account, not an admin", async () => {
     const student = await createUser({ role: Role.STUDENT });
+    const cookie = authCookie(student);
 
-    await request(app).post("/api/v1/users/me/become-instructor").set("Cookie", authCookie(student));
+    await request(app).post("/api/v1/auth/two-factor/setup").set("Cookie", cookie);
+    const stored = await prisma.user.findUniqueOrThrow({ where: { id: student.id } });
+    await request(app)
+      .post("/api/v1/auth/two-factor/enable")
+      .set("Cookie", cookie)
+      .send({ code: authenticator.generate(openSecret(stored.twoFactorSecret!)) });
 
-    const [event] = await events("user.became_instructor");
+    const [event] = await events("auth.two_factor_enabled");
     expect(event).toMatchObject({ actorId: student.id, actorEmail: student.email });
-  });
-
-  it("does not record the upgrade a second time, so double clicks stay out of the log", async () => {
-    const student = await createUser({ role: Role.STUDENT });
-    const upgrade = () =>
-      request(app).post("/api/v1/users/me/become-instructor").set("Cookie", authCookie(student));
-
-    await upgrade();
-    await upgrade();
-
-    // The second call is a no-op on the account; a log full of no-ops buries
-    // the entries worth reading.
-    expect(await events("user.became_instructor")).toHaveLength(1);
   });
 
   it("leaves ordinary reads out of the log entirely", async () => {

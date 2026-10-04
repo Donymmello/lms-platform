@@ -188,6 +188,24 @@ Duas coisas que surpreendem:
 
 Se puseres a Cloudflare à frente da VPS com o proxy ligado, conta com o corte dela ao corpo dos pedidos: **100 MB** nos planos Free e Pro. O limite da aplicação para vídeos é 500 MB, logo um vídeo acima de 100 MB falha com 413 antes de chegar à VPS. Ou carregas esses com o proxy desligado (DNS "grey cloud"), ou contra `localhost`.
 
+## Papéis e quem os dá
+
+Três papéis: `STUDENT` (por omissão em qualquer registo), `INSTRUCTOR` (cria e publica cursos) e `ADMIN` (gere contas e vê o log de auditoria).
+
+**Não há subida self-service.** Havia: a página `/ensinar` tinha um botão que transformava qualquer aluno em instrutor na hora, e um instrutor publica no catálogo sem aprovação de ninguém — numa plataforma com uma instrutora, isso significa um estranho a pôr um curso no catálogo dela. Agora `/ensinar` explica o papel e aponta para contacto (`NEXT_PUBLIC_CONTACT_EMAIL`), e a subida faz-se à mão em `/admin/users`, que fica registada no log.
+
+### O primeiro ADMIN é feito por SQL
+
+Não há outra forma, e de propósito: `PATCH /users/:id/role` recusa mudar o papel de quem faz o pedido, para um admin não se despromover e deixar a plataforma sem nenhum.
+
+```bash
+docker compose -f docker-compose.prod.yml exec lms-postgres psql -U lms_user -d lms_db -c "UPDATE users SET role='ADMIN' WHERE email='o-teu@email.com';"
+```
+
+Sai e entra outra vez depois: o papel vai assinado dentro do token de acesso, e o que tens no browser ainda diz o antigo.
+
+**Com zero admins, ninguém pode promover ninguém.** Faz este passo antes de precisares dele.
+
 ## Migrations
 
 ```bash

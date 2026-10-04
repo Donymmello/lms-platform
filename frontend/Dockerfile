@@ -25,6 +25,11 @@ ENV NEXT_TELEMETRY_DISABLED 1
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
+# Opcional: o endereço para quem quer ensinar. Sem ele a página "Ensinar"
+# explica o papel e não oferece contacto, em vez de mostrar um mailto morto.
+ARG NEXT_PUBLIC_CONTACT_EMAIL
+ENV NEXT_PUBLIC_CONTACT_EMAIL=$NEXT_PUBLIC_CONTACT_EMAIL
+
 RUN npm run build
 
 # --- ETAPA 3: Ambiente de Desenvolvimento (usada pelo docker-compose local) ---

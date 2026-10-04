@@ -22,7 +22,9 @@ const LABELS: Record<string, string> = {
   "user.role_changed": "Mudou a função de uma conta",
   "user.activated": "Reactivou uma conta",
   "user.deactivated": "Desactivou uma conta",
-  "user.became_instructor": "Passou a instrutor",
+  // A subida self-service já não existe, mas as entradas que ficaram no log
+  // de quando existia continuam a ter de se ler.
+  "user.became_instructor": "Passou a instrutor (self-service, descontinuado)",
   "auth.two_factor_enabled": "Activou a verificação em dois passos",
   "auth.two_factor_disabled": "Desactivou a verificação em dois passos",
   "auth.password_reset_completed": "Concluiu a recuperação de password",

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import { BarChart3, PlayCircle, Wallet } from "lucide-react";
-import { BecomeInstructorCta } from "./become-instructor-cta";
+import Link from "next/link";
+import { BarChart3, Mail, PlayCircle, Wallet } from "lucide-react";
+
+import { env } from "@/config/env";
 
 export const metadata: Metadata = {
   title: "Ensinar na plataforma | LMS",
@@ -15,7 +17,7 @@ const STEPS = [
   {
     icon: Wallet,
     title: "Define o preço",
-    body: "Gratuito ou pago em M-Pesa, e-Mola ou PayPal. O acesso abre sozinho assim que o pagamento é confirmado.",
+    body: "Gratuito ou pago em M-Pesa, e-Mola, cartão ou PayPal. O acesso abre sozinho assim que o pagamento é confirmado.",
   },
   {
     icon: BarChart3,
@@ -24,7 +26,12 @@ const STEPS = [
   },
 ];
 
+const CTA =
+  "inline-flex items-center gap-2 rounded-full bg-primary px-7 py-3.5 text-sm font-medium text-primary-foreground transition-transform hover:scale-[1.03]";
+
 export default function TeachPage() {
+  const contact = env.NEXT_PUBLIC_CONTACT_EMAIL;
+
   return (
     <div className="mx-auto max-w-shelf px-6 py-16 lg:px-10 lg:py-24">
       <header className="relative max-w-2xl">
@@ -36,11 +43,23 @@ export default function TeachPage() {
           Passa o que sabes <em className="italic text-primary">a limpo</em>
         </h1>
         <p className="relative mt-5 text-sm leading-relaxed text-muted-foreground">
-          Usas a conta que já tens. Ativas a parte de instrutor e ganhas um painel para criar cursos.
-          Continuas aluno nos que já compraste.
+          Usas a conta que já tens. A parte de instrutor é activada pela nossa equipa, e a partir
+          daí ganhas um painel para criar cursos. Continuas aluno nos que já compraste.
         </p>
         <div className="relative mt-8">
-          <BecomeInstructorCta />
+          {contact ? (
+            <a className={CTA} href={`mailto:${contact}?subject=${encodeURIComponent("Quero ensinar na plataforma")}`}>
+              <Mail className="h-4 w-4" />
+              Fala com a equipa
+            </a>
+          ) : (
+            <Link className={CTA} href="/register">
+              Criar conta
+            </Link>
+          )}
+          <p className="mt-3 text-xs text-muted-foreground">
+            Diz-nos o que queres ensinar e com que email te registaste.
+          </p>
         </div>
       </header>
 

@@ -13,12 +13,9 @@ import {
 
 export const usersRouter = Router();
 
-// Self-service, so it is deliberately registered before the ADMIN gate
-// below: any signed-in user may turn their own account into an instructor
-// account. It takes no id — the target is always `req.user`.
-usersRouter.post("/me/become-instructor", authenticate, usersController.becomeInstructor);
-
-// Every route below here is ADMIN-only user management.
+// Every route here is ADMIN-only user management. There is deliberately no
+// self-service route: an account becomes an INSTRUCTOR only through
+// `PATCH /:id/role` below, by an admin, and that is recorded in the audit log.
 usersRouter.use(authenticate, checkRole([Role.ADMIN]));
 
 usersRouter.get("/", validate(listUsersQuerySchema, "query"), usersController.list);
