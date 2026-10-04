@@ -1,8 +1,14 @@
-import { User } from "@prisma/client";
+import { Role, User } from "@prisma/client";
 import { ForbiddenError, NotFoundError } from "../../errors";
 import { authRepository } from "../auth/auth.repository";
 import { PaginatedUsersDto, UserResponseDto } from "./dtos/user.dto";
-import { ListUsersQuery, UpdateUserRoleInput, UpdateUserStatusInput } from "./schemas/user.schema";
+import {
+  InstructorRequestInput,
+  ListUsersQuery,
+  UpdateUserRoleInput,
+  UpdateUserStatusInput,
+} from "./schemas/user.schema";
+import { notifications } from "../../notifications/notifications";
 import { audit } from "../audit/audit.service";
 import { usersRepository } from "./users.repository";
 
@@ -42,6 +48,47 @@ export const usersService = {
   async getById(id: string): Promise<UserResponseDto> {
     const user = await requireUser(id);
     return toUserResponseDto(user);
+  },
+
+  /**
+   * Asks for instructor access. Deliberately changes nothing about the
+   * account — it writes an audit entry and mails the admins, and that is all.
+   *
+   * This is the replacement for the self-service upgrade that used to live
+   * here and promoted the caller on the spot. The shape is similar enough to
+   * be worth saying plainly: this route can be called by any student, and it
+   * must stay unable to grant anything. Promotion happens through
+   * `updateRole` below, which is ADMIN-only.
+   */
+  async requestInstructorAccess(actingUserId: string, input: InstructorRequestInput): Promise<void> {
+    const user = await requireUser(actingUserId);
+
+    // Already able to teach: not an error worth showing, and mailing the
+    // admins about it would be noise.
+    if (user.role !== Role.STUDENT) return;
+
+    // Written before the mail is sent, and this order matters: delivery is
+    // fire-and-forget and may fail, so the log is the durable record of the
+    // request rather than a copy of it.
+    await audit.record({
+      action: "user.requested_instructor",
+      actorEmail: user.email,
+      targetType: "user",
+      targetId: user.id,
+      metadata: { message: input.message },
+    });
+
+    const admins = await usersRepository.findAdmins();
+    if (admins.length === 0) {
+      // Nobody can act on it, and nobody will be told. The request is in the
+      // audit log, but the first admin still has to be created for anyone to
+      // read it — see "Papéis e quem os dá" in the README.
+      // eslint-disable-next-line no-console
+      console.error("Instructor request received with no ADMIN account to notify:", user.email);
+      return;
+    }
+
+    notifications.instructorRequested(admins, user, input.message);
   },
 
   async updateRole(

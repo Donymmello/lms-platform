@@ -192,7 +192,17 @@ Se puseres a Cloudflare à frente da VPS com o proxy ligado, conta com o corte d
 
 Três papéis: `STUDENT` (por omissão em qualquer registo), `INSTRUCTOR` (cria e publica cursos) e `ADMIN` (gere contas e vê o log de auditoria).
 
-**Não há subida self-service.** Havia: a página `/ensinar` tinha um botão que transformava qualquer aluno em instrutor na hora, e um instrutor publica no catálogo sem aprovação de ninguém — numa plataforma com uma instrutora, isso significa um estranho a pôr um curso no catálogo dela. Agora `/ensinar` explica o papel e aponta para contacto (`NEXT_PUBLIC_CONTACT_EMAIL`), e a subida faz-se à mão em `/admin/users`, que fica registada no log.
+**Não há subida self-service.** Havia: a página `/ensinar` tinha um botão que transformava qualquer aluno em instrutor na hora, e um instrutor publica no catálogo sem aprovação de ninguém — numa plataforma com uma instrutora, isso significa um estranho a pôr um curso no catálogo dela.
+
+Agora há pedido e aprovação:
+
+1. Em `/ensinar`, quem está autenticado escreve o que quer ensinar e envia (`POST /users/me/instructor-request`, 3 por hora por IP).
+2. O pedido é escrito no log de auditoria **e** enviado por email a todos os ADMIN activos, lidos da base de dados — não há lista a configurar em lado nenhum. A ordem é essa de propósito: o email é «envia e esquece» e pode falhar, logo o log é o registo que fica.
+3. Um admin promove em `/admin/users`, e essa mudança também fica no log.
+
+Não há tabela de candidaturas. O pedido não tem estado visível para quem o fez — o browser lembra-se de o ter enviado, e é tudo. Vale a pena construir a fila a sério (modelo, estados, ecrã de admin, email nas duas direcções) quando chegarem candidaturas com regularidade; com uma instrutora, não.
+
+Para ler os pedidos sem depender do email: `/admin/auditoria`, filtro «Pedidos para ensinar». A mensagem aparece na entrada.
 
 ### O primeiro ADMIN é feito por SQL
 

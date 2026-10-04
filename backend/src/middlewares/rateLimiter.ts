@@ -59,6 +59,35 @@ export const registerRateLimiter = rateLimit({
 });
 
 /**
+ * Asking to teach, which sends mail to every admin. Same amplification shape
+ * as registration — a script could turn one endpoint into a way to flood the
+ * admins' inboxes — but with a tighter limit, because nobody asks twice and
+ * the recipients did not choose to receive it. Counted separately from
+ * registration so a burst of signups does not silence real requests.
+ *
+ * Counted per account, not per IP, and this is the one route where that is
+ * both possible and necessary: it sits behind `authenticate`, so the account
+ * is known — and mobile networks here put whole cities behind a handful of
+ * carrier-NAT addresses, where three requests an hour per IP would turn a
+ * fourth person's genuine request into "já recebemos o teu pedido". Creating
+ * accounts to get around it runs into the registration limit instead.
+ */
+const instructorRequestStore = new MemoryStore();
+
+export const instructorRequestRateLimiter = rateLimit({
+  store: instructorRequestStore,
+  windowMs: 60 * 60 * 1000,
+  limit: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?.id ?? req.ip ?? "unknown",
+  message: {
+    status: "error",
+    message: "Já recebemos o teu pedido. Damos notícias em breve.",
+  },
+});
+
+/**
  * A ceiling for everything else, which had none: before this, only login and
  * checkout were limited, so anything reachable without a session — the
  * catalogue, a course page, a free-preview video — could be hammered as fast
@@ -95,5 +124,6 @@ export function resetRateLimiters(): void {
   authStore.resetAll();
   paymentsStore.resetAll();
   registerStore.resetAll();
+  instructorRequestStore.resetAll();
   generalStore.resetAll();
 }

@@ -29,6 +29,23 @@ function layout(heading: string, bodyHtml: string, cta?: { label: string; url: s
 </html>`;
 }
 
+/**
+ * Everything that reaches these templates from a user — their name, a course
+ * title they chose, the message they typed asking to teach — lands inside an
+ * HTML document. Unescaped, a `<` in any of it is markup: at best the mail
+ * renders wrong, at worst someone puts a link of their own in a message an
+ * admin reads and trusts. Mail clients strip scripts; they do not strip
+ * anchors.
+ */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function paragraph(text: string): string {
   return `<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#4a443d">${text}</p>`;
 }
@@ -44,7 +61,7 @@ export function welcomeEmail(name: string): RenderedEmail {
   return {
     subject: "Bem-vindo ao LMS",
     html: layout(
-      `Olá, ${name}`,
+      `Olá, ${escapeHtml(name)}`,
       paragraph("A tua conta está criada. Explora o catálogo e inscreve-te no primeiro curso.") +
         paragraph("Os cursos em que te inscreveres ficam disponíveis em «Os meus cursos», com o teu progresso guardado."),
       { label: "Explorar catálogo", url }
@@ -59,7 +76,9 @@ export function passwordResetEmail(name: string, rawToken: string): RenderedEmai
     subject: "Redefinir a tua palavra-passe",
     html: layout(
       "Redefinir palavra-passe",
-      paragraph(`Olá, ${name}. Recebemos um pedido para redefinir a palavra-passe da tua conta.`) +
+      paragraph(
+        `Olá, ${escapeHtml(name)}. Recebemos um pedido para redefinir a palavra-passe da tua conta.`
+      ) +
         paragraph("O link abaixo só funciona uma vez e expira dentro de uma hora.") +
         paragraph(
           "Se não foste tu a pedir, ignora este email. A tua palavra-passe actual continua a funcionar."
@@ -80,7 +99,9 @@ export function enrollmentEmail(name: string, courseTitle: string, courseSlug: s
     subject: `Estás inscrito em ${courseTitle}`,
     html: layout(
       `Inscrição confirmada`,
-      paragraph(`Olá, ${name}. A tua inscrição em <strong>${courseTitle}</strong> está confirmada.`) +
+      paragraph(
+        `Olá, ${escapeHtml(name)}. A tua inscrição em <strong>${escapeHtml(courseTitle)}</strong> está confirmada.`
+      ) +
         paragraph("Podes começar quando quiseres. O teu progresso fica guardado entre sessões."),
       { label: "Começar o curso", url }
     ),
@@ -109,10 +130,10 @@ export function paymentReceiptEmail(
     : `${env.PUBLIC_APP_URL}/student/courses`;
 
   const body = isSingle
-    ? paragraph(`O curso <strong>${titles[0]}</strong> já está disponível na tua área.`)
+    ? paragraph(`O curso <strong>${escapeHtml(titles[0]!)}</strong> já está disponível na tua área.`)
     : paragraph("Já tens disponíveis na tua área:") +
       `<ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.6">${titles
-        .map((title) => `<li>${title}</li>`)
+        .map((title) => `<li>${escapeHtml(title)}</li>`)
         .join("")}</ul>`;
 
   return {
@@ -121,9 +142,41 @@ export function paymentReceiptEmail(
       : `Pagamento confirmado — ${courses.length} cursos`,
     html: layout(
       "Pagamento confirmado",
-      paragraph(`Olá, ${name}. Recebemos o teu pagamento de <strong>${amount}</strong>.`) + body,
+      paragraph(`Olá, ${escapeHtml(name)}. Recebemos o teu pagamento de <strong>${amount}</strong>.`) + body,
       { label: isSingle ? "Ir para o curso" : "Ir para os meus cursos", url }
     ),
     text: `Olá, ${name}\n\nPagamento de ${amount} confirmado.\n${titles.join("\n")}\n\n${url}`,
+  };
+}
+
+/**
+ * Sent to the admins when someone asks to teach. Unlike every other template
+ * here, the recipient is not the person the mail is about — so it names them,
+ * and it links straight to the screen where the decision is made instead of
+ * asking the reader to go and find the account.
+ *
+ * The message is written by an untrusted stranger and read by an admin who
+ * trusts this mailbox, which is exactly the pair that makes escaping matter.
+ */
+export function instructorRequestEmail(
+  applicant: { name: string; email: string },
+  message: string
+): RenderedEmail {
+  const url = `${env.PUBLIC_APP_URL}/admin/users?search=${encodeURIComponent(applicant.email)}`;
+
+  return {
+    subject: `Pedido para ensinar — ${applicant.name}`,
+    html: layout(
+      "Alguém quer ensinar",
+      paragraph(
+        `<strong>${escapeHtml(applicant.name)}</strong> (${escapeHtml(applicant.email)}) pediu acesso de instrutor.`
+      ) +
+        `<blockquote style="margin:0 0 12px;padding:12px 16px;border-left:3px solid #e0a13a;background:#faf8f5;font-size:15px;line-height:1.6;color:#4a443d;white-space:pre-wrap">${escapeHtml(
+          message
+        )}</blockquote>` +
+        paragraph("Promove a conta em «Contas», se fizer sentido. A mudança fica no log de auditoria."),
+      { label: "Abrir a conta", url }
+    ),
+    text: `${applicant.name} (${applicant.email}) pediu acesso de instrutor.\n\n${message}\n\n${url}`,
   };
 }

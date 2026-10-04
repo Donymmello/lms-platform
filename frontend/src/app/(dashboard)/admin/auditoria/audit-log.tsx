@@ -28,10 +28,12 @@ const LABELS: Record<string, string> = {
   "auth.two_factor_enabled": "Activou a verificação em dois passos",
   "auth.two_factor_disabled": "Desactivou a verificação em dois passos",
   "auth.password_reset_completed": "Concluiu a recuperação de password",
+  "user.requested_instructor": "Pediu acesso de instrutor",
 };
 
 const FILTERS: { label: string; action?: string }[] = [
   { label: "Tudo" },
+  { label: "Pedidos para ensinar", action: "user.requested_instructor" },
   { label: "Funções", action: "user.role_changed" },
   { label: "Contas desactivadas", action: "user.deactivated" },
   { label: "Dois passos desligado", action: "auth.two_factor_disabled" },
@@ -56,6 +58,13 @@ function describeDetail(event: AuditEvent): string | null {
   if (typeof meta.targetEmail === "string") parts.push(meta.targetEmail);
   if (typeof meta.from === "string" && typeof meta.to === "string") {
     parts.push(`${meta.from} para ${meta.to}`);
+  }
+  // What someone wrote when asking to teach. The log is where the request
+  // survives if the email to the admins never arrived, so it has to be
+  // readable here — shortened, because the field allows 2000 characters and
+  // this is a one-line list.
+  if (typeof meta.message === "string") {
+    parts.push(meta.message.length > 140 ? `${meta.message.slice(0, 140)}…` : meta.message);
   }
   return parts.length > 0 ? parts.join(" · ") : null;
 }

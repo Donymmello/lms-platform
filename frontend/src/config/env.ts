@@ -8,10 +8,6 @@ import { z } from "zod";
  */
 const clientEnvSchema = z.object({
   NEXT_PUBLIC_API_URL: z.string().url(),
-  // Where someone who wants to teach writes to. Optional: without it the
-  // "Ensinar" page explains the role and simply does not offer an address,
-  // which is better than shipping a dead `mailto:`.
-  NEXT_PUBLIC_CONTACT_EMAIL: z.string().email().optional(),
 });
 
 /**
@@ -30,9 +26,6 @@ const serverEnvSchema = z.object({
 
 const publicEnv = clientEnvSchema.parse({
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-  // Empty string and unset must behave the same: Docker Compose passes
-  // `VAR: ${VAR:-}` as an empty string, which `z.string().email()` rejects.
-  NEXT_PUBLIC_CONTACT_EMAIL: process.env.NEXT_PUBLIC_CONTACT_EMAIL || undefined,
 });
 
 const serverEnv = serverEnvSchema.parse({
@@ -41,6 +34,5 @@ const serverEnv = serverEnvSchema.parse({
 
 export const env = {
   NEXT_PUBLIC_API_URL: publicEnv.NEXT_PUBLIC_API_URL,
-  NEXT_PUBLIC_CONTACT_EMAIL: publicEnv.NEXT_PUBLIC_CONTACT_EMAIL,
   INTERNAL_API_URL: serverEnv.INTERNAL_API_URL,
 };

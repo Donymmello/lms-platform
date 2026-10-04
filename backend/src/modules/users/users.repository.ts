@@ -37,6 +37,15 @@ export const usersRepository = {
     return prisma.user.findUnique({ where: { id } });
   },
 
+  /**
+   * Who to tell when someone asks to teach. Read from the database rather than
+   * configured, so adding an admin is enough and there is no second place to
+   * keep in step. Deactivated accounts are left out: they cannot act on it.
+   */
+  findAdmins(): Promise<User[]> {
+    return prisma.user.findMany({ where: { role: Role.ADMIN, isActive: true } });
+  },
+
   updateRole(id: string, role: Role): Promise<User> {
     return prisma.user.update({ where: { id }, data: { role } });
   },

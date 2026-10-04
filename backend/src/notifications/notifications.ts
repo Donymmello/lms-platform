@@ -1,6 +1,7 @@
 import { mailer } from "../integrations/mailer";
 import {
   enrollmentEmail,
+  instructorRequestEmail,
   passwordResetEmail,
   paymentReceiptEmail,
   welcomeEmail,
@@ -30,6 +31,25 @@ function dispatch(promise: Promise<unknown>): void {
 export const notifications = {
   userRegistered(user: { name: string; email: string }): void {
     dispatch(mailer.send({ to: user.email, ...welcomeEmail(user.name) }));
+  },
+
+  /**
+   * Tells the admins that someone wants to teach. One mail per admin rather
+   * than one with everyone in `to`, so no admin learns the others' addresses.
+   *
+   * Fire-and-forget like the rest, and here that is only acceptable because
+   * the request is also written to the audit log: if the mail never arrives,
+   * the record of the request still exists somewhere an admin can read.
+   */
+  instructorRequested(
+    admins: { email: string }[],
+    applicant: { name: string; email: string },
+    message: string
+  ): void {
+    const rendered = instructorRequestEmail(applicant, message);
+    for (const admin of admins) {
+      dispatch(mailer.send({ to: admin.email, ...rendered }));
+    }
   },
 
   /**

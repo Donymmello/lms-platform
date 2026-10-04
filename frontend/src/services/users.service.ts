@@ -3,6 +3,14 @@ import { ApiSuccessResponse, Role } from "@/types/auth";
 import { AdminUser, ListUsersParams, PaginatedUsers } from "@/types/user";
 
 export const usersService = {
+  /**
+   * Asks for instructor access. Changes nothing about the account: an admin
+   * decides, and the reply only confirms the request was taken.
+   */
+  async requestInstructorAccess(message: string): Promise<void> {
+    await apiFetch("/users/me/instructor-request", { method: "POST", body: { message } });
+  },
+
   async list(params: ListUsersParams): Promise<PaginatedUsers> {
     const res = await apiFetch<ApiSuccessResponse<PaginatedUsers>>("/users", {
       query: {

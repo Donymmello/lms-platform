@@ -163,8 +163,6 @@ services:
       # container is the frontend container itself — the backend is only
       # reachable at its service name on the compose network.
       INTERNAL_API_URL: http://lms-backend:5000/api/v1
-      # Opcional. Sem isto a página "Ensinar" não oferece contacto.
-      NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL:-}
     volumes:
       - ./frontend:/app
       - /app/node_modules
