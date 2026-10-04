@@ -1,0 +1,37 @@
+# Liga o proxy desta stack à rede de um servidor web que já corre na máquina.
+#
+# Usa-se *em acréscimo* ao ficheiro de produção, e não sozinho:
+#
+#   docker compose -f docker-compose.prod.yml -f docker-compose.shared-proxy.yml up -d --build
+#
+# Porque existe: `docker network connect` feito à mão é uma ligação em tempo de
+# execução, não ficou escrita em lado nenhum. O Compose recria o container do
+# proxy a cada `up -d --build`, e o container novo nasce só na rede do compose —
+# o site responde 502 até alguém se lembrar de reconectar. Declarada aqui, a
+# ligação é refeita em cada recriação, e com ela o alias de DNS.
+#
+# Só o proxy entra na rede partilhada. A base de dados, o backend e o frontend
+# ficam de fora: é o mínimo que funciona, e evita que os nomes desta stack
+# passem a responder a pedidos de outros projectos (ver o comentário no topo do
+# docker-compose.yml).
+#
+# No Caddyfile do outro servidor, encaminha para o nome do SERVIÇO:
+#
+#   lms.teudominio.com {
+#       reverse_proxy lms-proxy:8090
+#   }
+#
+# `lms-proxy` com hífen, porque é um alias que o Compose cria em todas as redes
+# do serviço. O nome do container não serve: já não é fixo.
+services:
+  lms-proxy:
+    networks:
+      - default
+      - shared-proxy
+
+networks:
+  shared-proxy:
+    external: true
+    # O nome da rede do outro servidor. Descobre-o com:
+    #   docker inspect <container-do-caddy> -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}'
+    name: ${SHARED_PROXY_NETWORK:?set SHARED_PROXY_NETWORK in .env}

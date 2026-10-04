@@ -119,20 +119,35 @@ demo.teudominio.com {
 }
 ```
 
-Se o Caddy da VPS for um container, `localhost` dentro dele é ele próprio, não a máquina. Liga-o à rede da stack e trata pelo nome:
+Se o Caddy da VPS for um container, `localhost` dentro dele é ele próprio, não a máquina. Nesse caso os dois têm de partilhar uma rede, e isso declara-se — **não** se faz com `docker network connect` à mão. Uma ligação feita à mão não fica escrita em lado nenhum: o Compose recria o container do proxy a cada `up -d --build`, o container novo nasce só na rede do compose, e o site responde 502 até alguém se lembrar de reconectar.
+
+Descobre o nome da rede do outro Caddy:
 
 ```bash
-docker network connect <rede-do-caddy> $(docker compose -f docker-compose.prod.yml ps -q lms-proxy)
+docker inspect <container-do-caddy> -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}'
 ```
 
-E no Caddyfile dele, `reverse_proxy lms-proxy:8090` — com hífen, que é o nome
-do **serviço**. Os containers desta stack não têm nome fixo (ver o comentário
-no topo do `docker-compose.prod.yml`), por isso um `reverse_proxy lms_proxy:8090`
-escrito antes desta mudança deixa de resolver e o site responde 502. Verifica
-antes de actualizar:
+Põe-no no `.env` e acrescenta o ficheiro [`docker-compose.shared-proxy.yml`](docker-compose.shared-proxy.yml) ao comando:
 
 ```bash
-grep -n 'lms' /opt/vektra-site/Caddyfile
+echo 'SHARED_PROXY_NETWORK=vektra-site_default' >> .env
+docker compose -f docker-compose.prod.yml -f docker-compose.shared-proxy.yml up -d --build
+```
+
+Só o proxy entra na rede partilhada; a base de dados, o backend e o frontend ficam de fora.
+
+E no Caddyfile dele, encaminha para o nome do **serviço**:
+
+```
+lms.teudominio.com {
+	reverse_proxy lms-proxy:8090
+}
+```
+
+`lms-proxy` com hífen. O Compose cria esse alias de DNS em todas as redes do serviço, e refá-lo em cada recriação. O nome do container não serve, porque já não é fixo — um `reverse_proxy lms_proxy:8090` escrito antes desta mudança deixa de resolver. Verifica antes de actualizar:
+
+```bash
+grep -n 'lms' /etc/caddy/Caddyfile
 ```
 
 **Atenção a um problema que isto pode causar, e já causou uma vez.** O DNS do Docker responde pelo **nome do serviço** em todas as redes a que um container pertence. Ligar o proxy a duas redes faz com que um pedido por `frontend` possa ser atendido pelo container de outro projecto — e o sintoma é 502 num site que não se tocou, ou pior, o proxy a servir a aplicação errada.
