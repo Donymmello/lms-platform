@@ -274,7 +274,7 @@ describe("PUT /progress/lessons/:lessonId/position", () => {
     return { course, lessons, student };
   }
 
-  function report(lessonId: string, student: { id: string }, body: unknown) {
+  function report(lessonId: string, student: { id: string }, body: object) {
     return request(app)
       .put(`/api/v1/progress/lessons/${lessonId}/position`)
       .set("Cookie", authCookie(student as Parameters<typeof authCookie>[0]))

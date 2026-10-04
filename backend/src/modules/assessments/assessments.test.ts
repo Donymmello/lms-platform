@@ -37,7 +37,7 @@ const QUIZ = {
   ],
 };
 
-async function moduleWithQuiz(quiz: unknown = QUIZ) {
+async function moduleWithQuiz(quiz: object = QUIZ) {
   const instructor = await createUser({ role: Role.INSTRUCTOR });
   const course = await createCourse(instructor.id, { status: CourseStatus.PUBLISHED });
   const [lesson] = await createLessons(course.id, 1);
