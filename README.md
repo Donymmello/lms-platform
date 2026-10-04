@@ -287,6 +287,68 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 Com a chave vazia ninguém consegue activar o 2FA, mas quem já o tem continua a entrar. O compose traz uma chave de desenvolvimento. **Gera outra para qualquer implantação real.**
 
+## Backups
+
+[`deploy/backup.sh`](deploy/backup.sh) guarda as três coisas que não se reconstroem a partir do repositório: a base de dados, os uploads (vídeos, materiais, capas) e o `.env`. Sem o `.env` os segredos 2FA já guardados ficam ilegíveis, por isso ele conta como dado e não como configuração.
+
+Corre no host, não dentro de um container, e descobre a stack pelas etiquetas do Compose — não precisa dos `-f` nem do `.env` para arrancar.
+
+```bash
+sudo /home/dony/lms-platform/deploy/backup.sh
+```
+
+Pela primeira vez vale a pena correr à mão e ver o resultado:
+
+```bash
+sudo tail -5 /var/backups/lms/backup.log
+```
+
+### Instalar no cron
+
+Às 3h30, com a saída de erro a ir para o log (um backup que falha em silêncio é pior que nenhum, porque dá confiança):
+
+```bash
+echo '30 3 * * * root /home/dony/lms-platform/deploy/backup.sh >> /var/backups/lms/cron.log 2>&1' | sudo tee /etc/cron.d/lms-backup
+```
+
+```bash
+sudo chmod 644 /etc/cron.d/lms-backup
+```
+
+### O que guarda, e como
+
+| | |
+|---|---|
+| `db/` | um `pg_dump -Fc` por execução, datado. Mantém 14 dias (`BACKUP_KEEP_DAYS`) |
+| `uploads/` | espelho **aditivo**: traz o que falta, nunca sobrepõe nem apaga |
+| `env/.env` | cópia, modo 600 |
+
+O espelho dos uploads não é um tar datado de propósito. Os vídeos são a maior parte dos bytes e não mudam depois de carregados: um tar por dia duplicaria gigabytes para nada. E por não apagar, um ficheiro removido por engano continua recuperável — o preço é que uma alteração legítima ao mesmo nome não chega ao backup, o que não acontece aqui porque os nomes são UUIDs.
+
+O dump é verificado com `pg_restore --list` antes de contar como bom. Um ficheiro de tamanho não-nulo não prova nada: um dump cortado a meio também o tem.
+
+O script desiste se houver menos de 2 GB livres (`BACKUP_MIN_FREE_MB`). Encher o disco desta VPS não derrubava só esta stack.
+
+### Restaurar
+
+A base de dados, por cima de uma stack a correr:
+
+```bash
+cat /var/backups/lms/db/lms_db-AAAAMMDD-HHMMSS.dump | docker exec -i $(docker ps -q -f label=com.docker.compose.project=lms-platform -f label=com.docker.compose.service=lms-postgres) pg_restore -U lms_user -d lms_db --clean --if-exists
+```
+
+`--clean --if-exists` apaga os objectos antes de os recriar, por isso **isto substitui os dados actuais**. Para espiar sem destruir nada, restaura para uma base nova com `-d lms_db_restore` depois de a criar.
+
+Os uploads voltam pelo caminho inverso ao do backup:
+
+```bash
+tar cf - -C /var/backups/lms/uploads . | docker run --rm -i -v lms-platform_backend_uploads:/data alpine:3 tar xf - --skip-old-files -C /data
+```
+
+### Ainda em falta
+
+**Os backups estão na mesma máquina que a stack.** Isso cobre o que falha mais: uma migration má, um `DROP` por engano, um ficheiro apagado. Não cobre perder o disco ou a VPS. Para fora, o passo seguinte é um `rsync` ou um `restic` do `/var/backups/lms` para outro sítio — uma Storage Box da Hetzner é o óbvio, já que o servidor lá está.
+
 ## Testes
 
 Os testes do backend correm contra uma base de dados Postgres real e dedicada (`lms_db_test`), não contra mocks do Prisma. As regras que interessam (acesso ao vídeo, RBAC, ownership, idempotência de webhooks, agregações) vivem em queries, e mockar o ORM não as testaria.
