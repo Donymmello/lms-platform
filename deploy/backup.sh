@@ -19,6 +19,12 @@
 # recebeu zero bytes e terminou bem.
 set -euo pipefail
 
+# Tudo o que este script cria nasce sem permissões para grupo nem para outros.
+# O dump tem os emails e as hashes de password de todos os utilizadores, e o
+# .env tem a chave que decifra os segredos 2FA. A pasta é 700, mas depender
+# disso é depender de uma barreira só.
+umask 077
+
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 DEST=${BACKUP_DIR:-/var/backups/lms}
 KEEP_DAYS=${BACKUP_KEEP_DAYS:-14}
