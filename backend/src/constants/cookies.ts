@@ -3,6 +3,8 @@ import { env } from "../config/env";
 
 export const ACCESS_TOKEN_COOKIE = "access_token";
 export const REFRESH_TOKEN_COOKIE = "refresh_token";
+export const GOOGLE_OAUTH_STATE_COOKIE = "google_oauth_state";
+export const GOOGLE_OAUTH_VERIFIER_COOKIE = "google_oauth_verifier";
 
 /** Path the refresh cookie is restricted to, so it isn't sent on every request. */
 export const REFRESH_TOKEN_COOKIE_PATH = "/api/v1/auth/refresh";
@@ -77,4 +79,13 @@ export function setAuthCookies(
 export function clearAuthCookies(res: Response): void {
   res.clearCookie(ACCESS_TOKEN_COOKIE, clearAccessTokenCookieOptions());
   res.clearCookie(REFRESH_TOKEN_COOKIE, clearRefreshTokenCookieOptions());
+}
+
+export function googleOAuthCookieOptions(): CookieOptions {
+  return { ...baseCookieOptions, path: "/api/v1/auth/google", maxAge: 10 * 60 * 1000 };
+}
+
+export function clearGoogleOAuthCookies(res: Response): void {
+  res.clearCookie(GOOGLE_OAUTH_STATE_COOKIE, { ...baseCookieOptions, path: "/api/v1/auth/google" });
+  res.clearCookie(GOOGLE_OAUTH_VERIFIER_COOKIE, { ...baseCookieOptions, path: "/api/v1/auth/google" });
 }

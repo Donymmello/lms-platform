@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { User } from "@prisma/client";
-import { ConflictError, ForbiddenError, UnauthorizedError } from "../../errors";
+import { AppError, ConflictError, ForbiddenError, UnauthorizedError } from "../../errors";
 import { comparePassword, hashPassword } from "../../utils/password";
 import {
   hashToken,
@@ -30,9 +30,14 @@ import {
   ResetPasswordInput,
   TwoFactorVerifyInput,
 } from "./schemas/auth.schema";
+import type { GoogleProfile } from "./google-oauth.service";
 
 /** Short on purpose: a reset link is a bearer credential sitting in an inbox. */
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
+
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
+}
 
 function toUserResponseDto(user: User): UserResponseDto {
   return {
@@ -76,6 +81,63 @@ export const authService = {
 
     const tokens = await issueTokens(user);
     notifications.userRegistered(user);
+    return { user: toUserResponseDto(user), tokens };
+  },
+
+  async loginWithGoogle(profile: GoogleProfile): Promise<AuthResultDto> {
+    let user = await authRepository.findByGoogleId(profile.googleId);
+    let created = false;
+
+    if (!user) {
+      const existing = await authRepository.findByEmail(profile.email);
+      if (existing) {
+        if (!existing.isActive) {
+          throw new ForbiddenError("This account has been deactivated");
+        }
+        if (existing.googleId && existing.googleId !== profile.googleId) {
+          throw new ConflictError("This email is linked to another Google account");
+        }
+        user = existing.googleId ? existing : await authRepository.linkGoogleId(existing.id, profile.googleId);
+        if (!user || user.googleId !== profile.googleId) {
+          throw new ConflictError("This account could not be linked to Google");
+        }
+      } else {
+        const passwordHash = await hashPassword(crypto.randomBytes(48).toString("base64url"));
+        try {
+          user = await authRepository.create({
+            name: profile.name,
+            email: profile.email,
+            passwordHash,
+            googleId: profile.googleId,
+          });
+          created = true;
+        } catch (error) {
+          if (!isUniqueViolation(error)) throw error;
+          user =
+            (await authRepository.findByGoogleId(profile.googleId)) ??
+            (await authRepository.findByEmail(profile.email));
+          if (!user) throw error;
+          if (user.googleId !== profile.googleId) {
+            user = await authRepository.linkGoogleId(user.id, profile.googleId);
+          }
+          if (!user || user.googleId !== profile.googleId) {
+            throw new ConflictError("This account could not be linked to Google");
+          }
+        }
+      }
+    }
+
+    if (!user.isActive) {
+      throw new ForbiddenError("This account has been deactivated");
+    }
+    if (user.twoFactorEnabledAt) {
+      throw new AppError("Use email and password to complete two-factor verification", 403, {
+        code: "TWO_FACTOR_REQUIRED",
+      });
+    }
+
+    const tokens = await issueTokens(user);
+    if (created) notifications.userRegistered(user);
     return { user: toUserResponseDto(user), tokens };
   },
 

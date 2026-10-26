@@ -27,6 +27,7 @@ model User {
   name      String
   email     String   @unique
   password  String // bcrypt hash — never the plaintext password
+  googleId  String?  @unique
   role      Role     @default(STUDENT)
   /// Deactivated accounts are blocked at login/refresh (see auth.service.ts)
   /// rather than deleted, preserving their history (enrollments, purchases).

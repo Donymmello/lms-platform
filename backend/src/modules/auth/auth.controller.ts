@@ -1,8 +1,19 @@
+import crypto from "node:crypto";
 import { Request, Response } from "express";
 import { asyncHandler } from "../../utils/asyncHandler";
-import { UnauthorizedError } from "../../errors";
-import { REFRESH_TOKEN_COOKIE, clearAuthCookies, setAuthCookies } from "../../constants/cookies";
+import { AppError, UnauthorizedError } from "../../errors";
+import {
+  GOOGLE_OAUTH_STATE_COOKIE,
+  GOOGLE_OAUTH_VERIFIER_COOKIE,
+  REFRESH_TOKEN_COOKIE,
+  clearAuthCookies,
+  clearGoogleOAuthCookies,
+  googleOAuthCookieOptions,
+  setAuthCookies,
+} from "../../constants/cookies";
+import { env } from "../../config/env";
 import { authService } from "./auth.service";
+import { googleOAuthService } from "./google-oauth.service";
 import { twoFactorService } from "./two-factor.service";
 import {
   ForgotPasswordInput,
@@ -14,7 +25,77 @@ import {
   TwoFactorVerifyInput,
 } from "./schemas/auth.schema";
 
+function googleLoginUrl(error: string): string {
+  const url = new URL("/login", env.PUBLIC_APP_URL);
+  url.searchParams.set("google_error", error);
+  return url.toString();
+}
+
+function matchesState(expected: unknown, received: unknown): expected is string {
+  if (typeof expected !== "string" || typeof received !== "string") return false;
+  const expectedBytes = Buffer.from(expected);
+  const receivedBytes = Buffer.from(received);
+  return expectedBytes.length === receivedBytes.length && crypto.timingSafeEqual(expectedBytes, receivedBytes);
+}
+
 export const authController = {
+  googleStart: asyncHandler(async (_req: Request, res: Response) => {
+    if (!googleOAuthService.isConfigured()) {
+      res.redirect(googleLoginUrl("not_configured"));
+      return;
+    }
+
+    const state = crypto.randomBytes(32).toString("hex");
+    const verifier = crypto.randomBytes(32).toString("base64url");
+    res.cookie(GOOGLE_OAUTH_STATE_COOKIE, state, googleOAuthCookieOptions());
+    res.cookie(GOOGLE_OAUTH_VERIFIER_COOKIE, verifier, googleOAuthCookieOptions());
+    res.redirect(googleOAuthService.createAuthorizationUrl(state, verifier));
+  }),
+
+  googleCallback: asyncHandler(async (req: Request, res: Response) => {
+    const providerError = req.query.error;
+    if (providerError) {
+      clearGoogleOAuthCookies(res);
+      res.redirect(googleLoginUrl("cancelled"));
+      return;
+    }
+
+    const { code, state } = req.query;
+    const savedState: unknown = req.cookies?.[GOOGLE_OAUTH_STATE_COOKIE];
+    const verifier: unknown = req.cookies?.[GOOGLE_OAUTH_VERIFIER_COOKIE];
+    clearGoogleOAuthCookies(res);
+
+    if (typeof code !== "string" || !matchesState(savedState, state) || typeof verifier !== "string") {
+      res.redirect(googleLoginUrl("invalid_state"));
+      return;
+    }
+
+    try {
+      const profile = await googleOAuthService.getProfile(code, verifier);
+      const result = await authService.loginWithGoogle(profile);
+      setAuthCookies(res, result.tokens);
+      res.redirect(new URL("/auth/google/callback", env.PUBLIC_APP_URL).toString());
+    } catch (error) {
+      if (!(error instanceof AppError)) throw error;
+
+      const details =
+        typeof error.details === "object" && error.details !== null
+          ? (error.details as { code?: unknown })
+          : {};
+      const frontendError =
+        details.code === "TWO_FACTOR_REQUIRED"
+          ? "two_factor_required"
+          : error.statusCode === 403
+            ? "account_unavailable"
+            : error.statusCode === 409
+              ? "account_conflict"
+              : error.statusCode === 503
+                ? "not_configured"
+                : "failed";
+      res.redirect(googleLoginUrl(frontendError));
+    }
+  }),
+
   register: asyncHandler(async (req: Request<unknown, unknown, RegisterInput>, res: Response) => {
     const { user, tokens } = await authService.register(req.body);
     setAuthCookies(res, tokens);

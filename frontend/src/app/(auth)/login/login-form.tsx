@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,20 @@ export function LoginForm() {
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
+
+  useEffect(() => {
+    const error = new URLSearchParams(window.location.search).get("google_error");
+    const messages: Record<string, string> = {
+      not_configured: "O início de sessão com Google ainda não está configurado.",
+      cancelled: "O início de sessão com Google foi cancelado.",
+      invalid_state: "A sessão Google expirou. Tenta novamente.",
+      two_factor_required: "Esta conta tem verificação em dois passos. Entra com email e palavra-passe.",
+      account_unavailable: "Esta conta não pode iniciar sessão. Contacta o suporte.",
+      account_conflict: "Não foi possível associar este Google à conta existente.",
+      failed: "Não foi possível iniciar sessão com Google. Tenta novamente.",
+    };
+    if (error && messages[error]) setFormError(messages[error]!);
+  }, []);
 
   async function handleVerify(event: React.FormEvent) {
     event.preventDefault();
@@ -157,7 +172,7 @@ export function LoginForm() {
                       href="/forgot-password"
                       className="text-xs text-muted-foreground hover:text-primary"
                     >
-                      Esqueceste-te?
+                      Esqueceu-se?
                     </Link>
                   </div>
                   <FormControl>
@@ -196,6 +211,13 @@ export function LoginForm() {
             </Button>
           </form>
         </Form>
+
+        <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="h-px flex-1 bg-border" />
+          ou
+          <span className="h-px flex-1 bg-border" />
+        </div>
+        <GoogleSignInButton />
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Ainda não tens conta?{" "}

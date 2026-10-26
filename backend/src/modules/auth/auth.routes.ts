@@ -26,6 +26,8 @@ authRouter.post(
   authController.register
 );
 
+authRouter.get("/google", authRateLimiter, authController.googleStart);
+authRouter.get("/google/callback", authController.googleCallback);
 authRouter.post("/login", authRateLimiter, validate(loginSchema, "body"), authController.login);
 
 authRouter.post("/refresh", authRateLimiter, authController.refresh);

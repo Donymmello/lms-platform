@@ -26,6 +26,10 @@ const envSchema = z.object({
   PUBLIC_API_URL: z.string().url().default("http://localhost:5000"),
   PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
 
+  // --- Google OAuth ---
+  GOOGLE_CLIENT_ID: z.string().default(""),
+  GOOGLE_CLIENT_SECRET: z.string().default(""),
+
   // --- PaySuite (M-Pesa + e-Mola aggregator for Mozambique) ---
   // https://paysuite.tech/docs — one gateway, `method: "mpesa" | "emola"`
   // selects the rail per checkout. Left with dev-only defaults so the app

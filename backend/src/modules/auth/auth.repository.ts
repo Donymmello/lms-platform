@@ -11,19 +11,29 @@ export const authRepository = {
     return prisma.user.findUnique({ where: { email } });
   },
 
+  findByGoogleId(googleId: string): Promise<User | null> {
+    return prisma.user.findUnique({ where: { googleId } });
+  },
+
   findById(id: string): Promise<User | null> {
     return prisma.user.findUnique({ where: { id } });
   },
 
-  create(data: { name: string; email: string; passwordHash: string; role?: Role }): Promise<User> {
+  create(data: { name: string; email: string; passwordHash: string; role?: Role; googleId?: string }): Promise<User> {
     return prisma.user.create({
       data: {
         name: data.name,
         email: data.email,
         password: data.passwordHash,
         role: data.role ?? Role.STUDENT,
+        googleId: data.googleId,
       },
     });
+  },
+
+  async linkGoogleId(userId: string, googleId: string): Promise<User | null> {
+    await prisma.user.updateMany({ where: { id: userId, googleId: null }, data: { googleId } });
+    return prisma.user.findUnique({ where: { id: userId } });
   },
 
   storeRefreshToken(params: { tokenHash: string; userId: string; expiresAt: Date }) {
