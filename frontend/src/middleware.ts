@@ -8,7 +8,7 @@ const AUTH_PAGES = ["/login", "/register"];
 // Reachable signed in or out: someone already logged in may still want to
 // change a password they no longer trust.
 const PUBLIC_AUTH_PAGES = ["/forgot-password", "/reset-password"];
-const PROTECTED_PREFIXES = ["/admin", "/instructor", "/seguranca", "/student"];
+const PROTECTED_PREFIXES = ["/admin", "/definicoes", "/instructor", "/seguranca", "/student"];
 
 /**
  * Builds the Content-Security-Policy for one request.

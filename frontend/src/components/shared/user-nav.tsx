@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -26,10 +27,12 @@ export function UserNav() {
         <p className="truncate text-xs text-muted-foreground">{user.email}</p>
       </div>
       <Link
-        href="/seguranca"
-        className="rounded-full px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+        href="/definicoes"
+        aria-label="Definições da conta"
+        title="Definições da conta"
+        className="focus-ring grid h-10 w-10 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
       >
-        Segurança
+        <Settings className="h-5 w-5" aria-hidden="true" />
       </Link>
       <Button variant="outline" size="sm" onClick={handleLogout}>
         Sair

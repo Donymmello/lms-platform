@@ -26,7 +26,9 @@ export default function ForgotPasswordPage() {
       setIsSent(true);
     } catch (caught) {
       setError(
-        caught instanceof ApiError ? caught.message : "Não foi possível enviar o email. Tenta novamente."
+        caught instanceof ApiError
+          ? caught.message
+          : "Não foi possível enviar o email. Tente novamente."
       );
     } finally {
       setIsSubmitting(false);
@@ -38,20 +40,20 @@ export default function ForgotPasswordPage() {
       <Card>
         <CardHeader>
           <MailCheck className="h-6 w-6 text-primary" />
-          <CardTitle>Verifica o teu email</CardTitle>
+          <CardTitle>Verifique o seu email</CardTitle>
           {/*
             Worded so it says the same thing whether or not the address is
             registered — the backend deliberately does not reveal which, and
             this screen must not give it away either.
           */}
           <CardDescription>
-            Se existir uma conta com <strong>{email}</strong>, enviámos um link para definir uma nova
-            palavra-passe. O link expira dentro de uma hora.
+            Se existir uma conta associada a <strong>{email}</strong>, enviaremos uma ligação para
+            definir uma nova palavra-passe. A ligação expira dentro de uma hora.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild variant="outline" className="w-full">
-            <Link href="/login">Voltar ao início de sessão</Link>
+            <Link href="/login">Voltar à página de início de sessão</Link>
           </Button>
         </CardContent>
       </Card>
@@ -61,13 +63,14 @@ export default function ForgotPasswordPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Esqueceste a palavra-passe?</CardTitle>
+        <CardTitle>Esqueceu-se da palavra-passe?</CardTitle>
         <CardDescription>
-          Escreve o teu email e enviamos um link para definires uma nova.
+          Introduza o endereço de email associado à sua conta. Enviaremos uma ligação para criar uma
+          nova palavra-passe.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -75,7 +78,7 @@ export default function ForgotPasswordPage() {
               type="email"
               required
               autoComplete="email"
-              placeholder="tu@exemplo.com"
+              placeholder="nome@exemplo.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -89,14 +92,14 @@ export default function ForgotPasswordPage() {
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            Enviar link
+            Enviar ligação de recuperação
           </Button>
         </form>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
-          Lembraste-te?{" "}
+          Já se recorda da palavra-passe?{" "}
           <Link href="/login" className="font-medium text-primary hover:underline">
-            Iniciar sessão
+            Inicie sessão
           </Link>
         </p>
       </CardContent>

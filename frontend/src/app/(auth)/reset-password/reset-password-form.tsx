@@ -14,10 +14,10 @@ import { authService } from "@/services/auth.service";
 
 /** Mirrors the backend's rules, so a weak password is caught before a round trip. */
 function passwordProblem(password: string): string | null {
-  if (password.length < 8) return "A palavra-passe tem de ter pelo menos 8 caracteres.";
-  if (!/[a-z]/.test(password)) return "A palavra-passe tem de ter uma letra minúscula.";
-  if (!/[A-Z]/.test(password)) return "A palavra-passe tem de ter uma letra maiúscula.";
-  if (!/[0-9]/.test(password)) return "A palavra-passe tem de ter um número.";
+  if (password.length < 8) return "A palavra-passe deve ter pelo menos 8 caracteres.";
+  if (!/[a-z]/.test(password)) return "A palavra-passe deve incluir uma letra minúscula.";
+  if (!/[A-Z]/.test(password)) return "A palavra-passe deve incluir uma letra maiúscula.";
+  if (!/[0-9]/.test(password)) return "A palavra-passe deve incluir um número.";
   return null;
 }
 
@@ -49,7 +49,7 @@ export function ResetPasswordForm() {
       setError(
         caught instanceof ApiError
           ? caught.message
-          : "Não foi possível definir a nova palavra-passe. Tenta novamente."
+          : "Não foi possível definir a nova palavra-passe. Tente novamente."
       );
     }
   }
@@ -60,12 +60,12 @@ export function ResetPasswordForm() {
         <CardHeader>
           <CardTitle>Link inválido</CardTitle>
           <CardDescription>
-            Este endereço não traz um código de recuperação. Pede um link novo.
+            Este endereço não contém um código de recuperação válido. Solicite uma nova ligação.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild className="w-full">
-            <Link href="/forgot-password">Pedir novo link</Link>
+            <Link href="/forgot-password">Solicitar nova ligação</Link>
           </Button>
         </CardContent>
       </Card>
@@ -79,7 +79,7 @@ export function ResetPasswordForm() {
           <CheckCircle2 className="h-6 w-6 text-primary" />
           <CardTitle>Palavra-passe alterada</CardTitle>
           <CardDescription>
-            Já podes iniciar sessão com a nova palavra-passe. As sessões antigas foram terminadas.
+            Já pode iniciar sessão com a nova palavra-passe. As sessões anteriores foram terminadas.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -95,7 +95,7 @@ export function ResetPasswordForm() {
     <Card>
       <CardHeader>
         <CardTitle>Nova palavra-passe</CardTitle>
-        <CardDescription>Escolhe uma palavra-passe que ainda não tenhas usado aqui.</CardDescription>
+        <CardDescription>Defina uma palavra-passe que ainda não tenha utilizado nesta conta.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -121,7 +121,7 @@ export function ResetPasswordForm() {
               </button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Mínimo 8 caracteres, com maiúscula, minúscula e número.
+              Mínimo de 8 caracteres, incluindo letras maiúsculas, minúsculas e números.
             </p>
           </div>
 
@@ -144,7 +144,7 @@ export function ResetPasswordForm() {
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            Guardar
+            Guardar nova palavra-passe
           </Button>
         </form>
       </CardContent>
