@@ -33,6 +33,8 @@ publicCoversRouter.get(
 
     res.setHeader("Content-Type", coverContentType(key));
     res.setHeader("Content-Length", String(await localCoverStorage.sizeOf(key)));
+    // The public catalogue loads these images from the API's separate origin.
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     // The name is generated per upload, so a given URL never changes content.
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
     // Belt and braces on a file a user supplied: the store already checks the

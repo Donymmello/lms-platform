@@ -28,8 +28,9 @@ const PROTECTED_PREFIXES = ["/admin", "/definicoes", "/instructor", "/seguranca"
  *   but no browser in use enforces it independently yet, so it would be a
  *   false sense of tightening.
  * - `img-src https:` because an instructor can point a course thumbnail at any
- *   host, and `data:` because the generated cover and the film-grain texture
- *   are inline SVG.
+ *   HTTPS host, the configured API origin because uploaded covers are served
+ *   from it (including HTTP localhost in development), and `data:` for inline
+ *   SVG covers and the film-grain texture.
  * - `connect-src` names the API explicitly: in development it runs on a
  *   different port, so same-origin would block every request the app makes.
  * - `frame-src https:` for a Bunny Stream embed. What stops this site being
@@ -56,7 +57,7 @@ function contentSecurityPolicy(nonce: string): string {
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https:",
+    `img-src 'self' data: blob: https: ${apiOrigin}`.trim(),
     "font-src 'self'",
     `connect-src 'self' ${apiOrigin}`.trim(),
     `media-src 'self' blob: ${apiOrigin}`.trim(),

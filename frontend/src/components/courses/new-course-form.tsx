@@ -81,6 +81,9 @@ export function NewCourseForm({ basePath }: { basePath: string }) {
                     <Input placeholder="https://..." {...field} value={field.value ?? ""} />
                   </FormControl>
                   <FormMessage />
+                  <p className="text-xs text-muted-foreground">
+                    Também pode carregar uma imagem directamente no editor depois de criar o curso.
+                  </p>
                 </FormItem>
               )}
             />

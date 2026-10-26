@@ -42,6 +42,24 @@ export const coursesService = {
     return courseResponse(res);
   },
 
+  async uploadCover(courseId: string, file: File): Promise<CourseDetail> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await apiUpload<ApiSuccessResponse<{ course: CourseDetail }>>(
+      `/courses/${courseId}/cover`,
+      formData
+    );
+    return courseResponse(res);
+  },
+
+  async removeCover(courseId: string): Promise<CourseDetail> {
+    const res = await apiFetch<ApiSuccessResponse<{ course: CourseDetail }>>(
+      `/courses/${courseId}/cover`,
+      { method: "DELETE" }
+    );
+    return courseResponse(res);
+  },
+
   async updateStatus(courseId: string, status: CourseStatus): Promise<CourseDetail> {
     const res = await apiFetch<ApiSuccessResponse<{ course: CourseDetail }>>(`/courses/${courseId}/status`, {
       method: "PATCH",

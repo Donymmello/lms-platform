@@ -105,6 +105,7 @@ describe("GET /public/covers/:key", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers["content-type"]).toContain("image/png");
+    expect(response.headers["cross-origin-resource-policy"]).toBe("cross-origin");
     expect(response.headers["cache-control"]).toContain("immutable");
     expect(response.headers["x-content-type-options"]).toBe("nosniff");
     expect(Buffer.compare(response.body, PNG)).toBe(0);

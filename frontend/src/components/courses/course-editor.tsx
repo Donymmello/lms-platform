@@ -11,6 +11,7 @@ import {
   ArrowUp,
   ClipboardCheck,
   Film,
+  ImagePlus,
   Loader2,
   Paperclip,
   Plus,
@@ -26,6 +27,7 @@ import { ConfirmButton } from "@/components/shared/confirm-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { CourseCover } from "@/components/studio/course-cover";
 import { ApiError } from "@/services/api-client";
 import { coursesService } from "@/services/courses.service";
 import { CourseDetail, CourseModuleItem, LessonItem } from "@/types/course";
@@ -170,6 +172,10 @@ function CourseInfoForm({
   onSaved: (course: CourseDetail) => void;
 }) {
   const [formError, setFormError] = useState<string | null>(null);
+  const [coverError, setCoverError] = useState<string | null>(null);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [isRemovingCover, setIsRemovingCover] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<CourseFormValues>({
     resolver: zodResolver(courseFormSchema),
@@ -187,6 +193,39 @@ function CourseInfoForm({
       onSaved(await coursesService.update(course.id, values));
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : "Não foi possível guardar as alterações.");
+    }
+  }
+
+  async function handleCoverSelected(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    if (!file) return;
+
+    setCoverError(null);
+    if (file.size > 5 * 1024 * 1024) {
+      setCoverError("A imagem não pode exceder 5 MB.");
+      return;
+    }
+
+    setIsUploadingCover(true);
+    try {
+      onSaved(await coursesService.uploadCover(course.id, file));
+    } catch (err) {
+      setCoverError(err instanceof ApiError ? err.message : "Não foi possível carregar a imagem.");
+    } finally {
+      setIsUploadingCover(false);
+    }
+  }
+
+  async function handleRemoveCover() {
+    setCoverError(null);
+    setIsRemovingCover(true);
+    try {
+      onSaved(await coursesService.removeCover(course.id));
+    } catch (err) {
+      setCoverError(err instanceof ApiError ? err.message : "Não foi possível remover a imagem.");
+    } finally {
+      setIsRemovingCover(false);
     }
   }
 
@@ -241,6 +280,66 @@ function CourseInfoForm({
                 </FormItem>
               )}
             />
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-medium">Imagem de capa</p>
+                <p className="text-xs text-muted-foreground">
+                  Carregue uma imagem PNG, JPG ou WebP até 5 MB.
+                </p>
+              </div>
+              <div className="relative aspect-video max-w-lg overflow-hidden rounded-md bg-secondary">
+                <CourseCover
+                  slug={course.slug}
+                  title={course.title}
+                  thumbnailUrl={course.thumbnailUrl}
+                  coverKey={course.coverKey}
+                />
+              </div>
+              <input
+                ref={coverInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
+                onChange={handleCoverSelected}
+                className="hidden"
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={isUploadingCover || isRemovingCover}
+                  onClick={() => coverInputRef.current?.click()}
+                >
+                  {isUploadingCover ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <ImagePlus className="h-3 w-3" />
+                  )}
+                  {course.coverKey ? "Substituir imagem" : "Carregar imagem"}
+                </Button>
+                {course.coverKey && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={isUploadingCover || isRemovingCover}
+                    onClick={() => void handleRemoveCover()}
+                  >
+                    {isRemovingCover ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3 w-3" />
+                    )}
+                    Remover imagem
+                  </Button>
+                )}
+              </div>
+              {coverError && (
+                <p role="alert" className="text-sm font-medium text-destructive">
+                  {coverError}
+                </p>
+              )}
+            </div>
             <FormField
               control={form.control}
               name="priceCents"
