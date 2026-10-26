@@ -4,7 +4,7 @@ import { BarChart3, PlayCircle, Wallet } from "lucide-react";
 import { InstructorRequestForm } from "./instructor-request-form";
 
 export const metadata: Metadata = {
-  title: "Ensinar na plataforma | LMS",
+  title: "Ensinar na plataforma | Protagonista Academy",
 };
 
 const STEPS = [

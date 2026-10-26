@@ -50,8 +50,8 @@ const instrumentSerif = localFont({
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "LMS",
-  description: "Plataforma de cursos online",
+  title: "Protagonista Academy",
+  description: "Aprendizagem para avançar na carreira.",
 };
 
 export default function RootLayout({

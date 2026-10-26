@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { NewCourse } from "@/components/courses/course-management";
 
 export const metadata: Metadata = {
-  title: "Novo curso | LMS",
+  title: "Novo curso | Protagonista Academy",
 };
 
 export default function NewCoursePage() {

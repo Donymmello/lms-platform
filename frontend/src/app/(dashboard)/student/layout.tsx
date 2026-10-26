@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { RoleGuard } from "@/components/shared/role-guard";
 import { UserNav } from "@/components/shared/user-nav";
+import { BrandWordmark } from "@/components/shared/brand-wordmark";
 
 /**
  * The student area runs on its own scoped palette (`data-theme="studio"`),
@@ -21,7 +22,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             its own home in the nav beside it.
           */}
           <Link href="/" className="focus-ring group flex items-baseline gap-2.5 rounded-md">
-            <span className="font-display text-2xl leading-none tracking-tight">LMS</span>
+            <BrandWordmark />
             <span className="hidden text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground transition-colors group-hover:text-primary sm:inline">
               Aprendizagem
             </span>

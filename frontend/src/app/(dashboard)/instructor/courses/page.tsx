@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { CoursesManager } from "@/components/courses/course-management";
 
 export const metadata: Metadata = {
-  title: "Os meus cursos | LMS",
+  title: "Os meus cursos | Protagonista Academy",
 };
 
 export default function InstructorCoursesPage() {

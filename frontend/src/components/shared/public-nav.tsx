@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { homePathForRole } from "@/lib/routes";
+import { BrandWordmark } from "./brand-wordmark";
 
 export function PublicNav() {
   const router = useRouter();
@@ -22,7 +23,7 @@ export function PublicNav() {
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-shelf items-center justify-between gap-6 px-6 lg:px-10">
         <Link href="/" className="group flex items-baseline gap-2.5">
-          <span className="font-display text-2xl leading-none tracking-tight">LMS</span>
+          <BrandWordmark />
           <span className="hidden text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground transition-colors group-hover:text-primary sm:inline">
             Aprendizagem
           </span>

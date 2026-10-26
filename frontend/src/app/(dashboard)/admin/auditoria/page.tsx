@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { AuditLog } from "./audit-log";
 
 export const metadata: Metadata = {
-  title: "Auditoria | LMS",
+  title: "Auditoria | Protagonista Academy",
 };
 
 export default function AdminAuditPage() {

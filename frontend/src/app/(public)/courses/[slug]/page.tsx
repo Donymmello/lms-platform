@@ -31,7 +31,9 @@ function formatPrice(cents: number): string {
 export async function generateMetadata({ params }: CourseDetailPageProps): Promise<Metadata> {
   const course = await getCourse(params.slug);
   return {
-    title: course ? `${course.title} | LMS` : "Curso não encontrado | LMS",
+    title: course
+      ? `${course.title} | Protagonista Academy`
+      : "Curso não encontrado | Protagonista Academy",
   };
 }
 

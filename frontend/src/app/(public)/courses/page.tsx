@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PublicCoursesList } from "./public-courses-list";
 
 export const metadata: Metadata = {
-  title: "Catálogo | LMS",
+  title: "Catálogo | Protagonista Academy",
 };
 
 export default function PublicCoursesPage() {

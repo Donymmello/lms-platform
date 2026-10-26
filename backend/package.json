@@ -1,7 +1,7 @@
 {
   "name": "lms-platform-backend",
   "version": "1.0.0",
-  "description": "LMS Platform backend - Node.js, Express, TypeScript, Prisma",
+  "description": "Protagonista Academy backend - Node.js, Express, TypeScript, Prisma",
   "main": "dist/server.js",
   "private": true,
   "scripts": {
