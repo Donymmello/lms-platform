@@ -7,6 +7,8 @@ export interface CheckoutResultDto {
   status: PaymentStatus;
   /** Empty once the payment is already COMPLETED — nothing left to redirect to. */
   redirectUrl: string;
+  receiptNumber?: string;
+  receiptUrl?: string;
 }
 
 /** One course inside a payment, at the price charged for it. */
@@ -27,4 +29,6 @@ export interface MyPaymentDto {
   currency: string;
   items: PaymentItemDto[];
   createdAt: Date;
+  receiptNumber?: string;
+  receiptUrl?: string;
 }

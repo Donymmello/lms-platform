@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { CartView } from "./cart-view";
 
 export const metadata: Metadata = {
-  title: "Carrinho | LMS",
+  title: "Carrinho | Protagonista Academy",
 };
 
 export default function CartPage() {

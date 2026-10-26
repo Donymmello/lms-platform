@@ -12,6 +12,7 @@ export const paymentsRepository = {
   create(data: {
     userId: string;
     provider: PaymentProvider;
+    payerPhone?: string;
     amountCents: number;
     currency: string;
     reference: string;
@@ -48,10 +49,51 @@ export const paymentsRepository = {
     });
   },
 
-  updateStatus(id: string, status: PaymentStatus, rawPayload?: unknown): Promise<Payment> {
-    return prisma.payment.update({
-      where: { id },
-      data: { status, ...(rawPayload !== undefined ? { rawPayload: rawPayload as Prisma.InputJsonValue } : {}) },
+  async updatePendingStatus(
+    id: string,
+    status: PaymentStatus,
+    rawPayload?: unknown,
+    receipt?: { receiptNumber?: string; receiptUrl?: string }
+  ): Promise<boolean> {
+    const result = await prisma.payment.updateMany({
+      where: { id, status: PaymentStatus.PENDING },
+      data: {
+        status,
+        ...(rawPayload !== undefined ? { rawPayload: rawPayload as Prisma.InputJsonValue } : {}),
+        ...(receipt ?? {}),
+      },
+    });
+    return result.count === 1;
+  },
+
+  async updateReceipt(id: string, receipt: { receiptNumber?: string; receiptUrl?: string }): Promise<void> {
+    await prisma.payment.update({ where: { id }, data: receipt });
+  },
+
+  async applyPagarWebhook(
+    eventId: string,
+    eventType: string,
+    paymentId: string,
+    status: PaymentStatus,
+    rawPayload?: unknown,
+    receipt?: { receiptNumber?: string; receiptUrl?: string }
+  ): Promise<boolean> {
+    return prisma.$transaction(async (tx) => {
+      const inserted = await tx.paymentWebhookEvent.createMany({
+        data: [{ eventId, eventType }],
+        skipDuplicates: true,
+      });
+      if (inserted.count === 0) return false;
+
+      const updated = await tx.payment.updateMany({
+        where: { id: paymentId, status: PaymentStatus.PENDING },
+        data: {
+          status,
+          ...(rawPayload !== undefined ? { rawPayload: rawPayload as Prisma.InputJsonValue } : {}),
+          ...(receipt ?? {}),
+        },
+      });
+      return updated.count === 1;
     });
   },
 

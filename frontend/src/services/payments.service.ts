@@ -7,16 +7,24 @@ export const paymentsService = {
    * One charge for one course or a cartful. The server refuses a part-invalid
    * cart whole, so there is no partial success to handle here.
    */
-  async checkout(courseIds: string[], provider: PaymentProvider): Promise<CheckoutResult> {
+  async checkout(courseIds: string[], provider: PaymentProvider, payerPhone?: string): Promise<CheckoutResult> {
     const res = await apiFetch<ApiSuccessResponse<{ checkout: CheckoutResult }>>("/payments/checkout", {
       method: "POST",
-      body: { courseIds, provider },
+      body: { courseIds, provider, payerPhone },
     });
     return res.data.checkout;
   },
 
   async capturePaypal(reference: string): Promise<CheckoutResult> {
     const res = await apiFetch<ApiSuccessResponse<{ checkout: CheckoutResult }>>("/payments/paypal/capture", {
+      method: "POST",
+      body: { reference },
+    });
+    return res.data.checkout;
+  },
+
+  async reconcilePagar(reference: string): Promise<CheckoutResult> {
+    const res = await apiFetch<ApiSuccessResponse<{ checkout: CheckoutResult }>>("/payments/pagar/reconcile", {
       method: "POST",
       body: { reference },
     });

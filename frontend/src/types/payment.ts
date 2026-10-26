@@ -1,5 +1,4 @@
-/** CARD is Visa and Mastercard, which PaySuite handles on its own page. */
-export type PaymentProvider = "MPESA" | "EMOLA" | "CARD" | "PAYPAL";
+export type PaymentProvider = "MPESA" | "EMOLA" | "CARD" | "PAYPAL" | "PAGAR_MPESA" | "PAGAR_EMOLA";
 export type PaymentStatus = "PENDING" | "COMPLETED" | "FAILED" | "CANCELLED";
 
 export interface CheckoutResult {
@@ -8,6 +7,8 @@ export interface CheckoutResult {
   provider: PaymentProvider;
   status: PaymentStatus;
   redirectUrl: string;
+  receiptNumber?: string;
+  receiptUrl?: string;
 }
 
 /** One course inside a payment, at the price charged for it. */
@@ -28,4 +29,6 @@ export interface MyPayment {
   currency: string;
   items: PaymentItem[];
   createdAt: string;
+  receiptNumber?: string;
+  receiptUrl?: string;
 }

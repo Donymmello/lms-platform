@@ -48,8 +48,18 @@ function isUniqueViolation(error: unknown): boolean {
  * one of the courses must still unlock the others, and a webhook delivered
  * twice must not fail the second time.
  */
-async function completePayment(paymentId: string, rawPayload?: unknown): Promise<void> {
-  await paymentsRepository.updateStatus(paymentId, PaymentStatus.COMPLETED, rawPayload);
+async function completePayment(
+  paymentId: string,
+  rawPayload?: unknown,
+  alreadyClaimed = false,
+  receipt?: { receiptNumber?: string; receiptUrl?: string }
+): Promise<void> {
+  if (
+    !alreadyClaimed &&
+    !(await paymentsRepository.updatePendingStatus(paymentId, PaymentStatus.COMPLETED, rawPayload, receipt))
+  ) {
+    return;
+  }
 
   const payment = await paymentsRepository.findWithItems(paymentId);
   if (!payment) return;
@@ -72,7 +82,12 @@ async function completePayment(paymentId: string, rawPayload?: unknown): Promise
       notifications.paymentCompleted(
         user,
         payment.items.map((item) => ({ title: item.course.title, slug: item.course.slug })),
-        { amountCents: payment.amountCents, currency: payment.currency }
+        {
+          amountCents: payment.amountCents,
+          currency: payment.currency,
+          receiptNumber: payment.receiptNumber ?? undefined,
+          receiptUrl: payment.receiptUrl ?? undefined,
+        }
       );
     }
   }
@@ -86,7 +101,12 @@ export const paymentsService = {
    * that is part-invalid is refused whole rather than charging for the good
    * half, because the buyer cannot see which half that was.
    */
-  async checkout(input: CreateCheckoutInput, actingUser: AuthenticatedUser): Promise<CheckoutResultDto> {
+   async checkout(input: CreateCheckoutInput, actingUser: AuthenticatedUser): Promise<CheckoutResultDto> {
+     const isPagar = input.provider === PaymentProvider.PAGAR_MPESA || input.provider === PaymentProvider.PAGAR_EMOLA;
+     if (isPagar && !input.payerPhone) {
+       throw new AppError("Payer phone is required for Pagar", 400);
+    }
+
     const courses = await Promise.all(input.courseIds.map(requirePublishedPricedCourse));
 
     for (const course of courses) {
@@ -102,6 +122,12 @@ export const paymentsService = {
     }
 
     const amountCents = courses.reduce((total, course) => total + course.priceCents, 0);
+    if (isPagar && amountCents % 100 !== 0) {
+      throw new AppError(
+        "A Pagar só aceita valores inteiros em MZN. Selecciona outro método de pagamento ou ajusta o preço do curso.",
+        400
+      );
+    }
     // What the gateway shows the buyer on their phone. One title fits; a cart
     // has to be summarised, because the field is short.
     const description =
@@ -121,11 +147,13 @@ export const paymentsService = {
         ? `${env.PUBLIC_APP_URL}/payments/paypal/return?reference=${reference}`
         : `${env.PUBLIC_APP_URL}/payments/return?reference=${reference}`,
       cancelUrl: `${env.PUBLIC_APP_URL}/payments/paypal/cancel?reference=${reference}`,
+      payerPhone: input.payerPhone,
     });
 
     const payment = await paymentsRepository.create({
       userId: actingUser.id,
       provider: input.provider,
+      payerPhone: isPagar ? input.payerPhone : undefined,
       amountCents,
       currency: "MZN",
       reference,
@@ -149,14 +177,41 @@ export const paymentsService = {
     if (outcome.kind === "ignored") return;
 
     const payment = await paymentsRepository.findByProviderTxnId(outcome.providerTxnId);
-    if (!payment || payment.status !== PaymentStatus.PENDING) {
+    if (
+      !payment ||
+      payment.status !== PaymentStatus.PENDING ||
+      (outcome.reference !== undefined && payment.reference !== outcome.reference) ||
+      (outcome.amountCents !== undefined && payment.amountCents !== outcome.amountCents)
+    ) {
       return;
     }
 
     if (outcome.kind === "completed") {
-      await completePayment(payment.id, rawPayload);
+      if (outcome.eventId) {
+        const applied = await paymentsRepository.applyPagarWebhook(
+          outcome.eventId,
+          "payment.succeeded",
+          payment.id,
+          PaymentStatus.COMPLETED,
+          rawPayload,
+          { receiptNumber: outcome.receiptNumber, receiptUrl: outcome.receiptUrl }
+        );
+        if (applied) await completePayment(payment.id, rawPayload, true, outcome);
+      } else {
+        await completePayment(payment.id, rawPayload, false, outcome);
+      }
     } else {
-      await paymentsRepository.updateStatus(payment.id, PaymentStatus.FAILED, rawPayload);
+      if (outcome.eventId) {
+        await paymentsRepository.applyPagarWebhook(
+          outcome.eventId,
+          "payment.failed",
+          payment.id,
+          PaymentStatus.FAILED,
+          rawPayload
+        );
+      } else {
+        await paymentsRepository.updatePendingStatus(payment.id, PaymentStatus.FAILED, rawPayload);
+      }
     }
   },
 
@@ -190,6 +245,65 @@ export const paymentsService = {
     };
   },
 
+  async reconcilePagarPayment(reference: string, actingUser: AuthenticatedUser): Promise<CheckoutResultDto> {
+    const payment = await paymentsRepository.findByReference(reference);
+    if (!payment || payment.userId !== actingUser.id) {
+      throw new NotFoundError("Payment not found");
+    }
+    if (payment.provider !== PaymentProvider.PAGAR_MPESA && payment.provider !== PaymentProvider.PAGAR_EMOLA) {
+      throw new AppError("This payment is not a Pagar payment", 400);
+    }
+    if (payment.status === PaymentStatus.PENDING || payment.status === PaymentStatus.COMPLETED) {
+      if (!payment.providerTxnId) {
+        throw new AppError("Payment is missing its Pagar transaction id", 500);
+      }
+      const pagarStatus = await getPaymentGateway(payment.provider).getPaymentByReference?.(payment.reference);
+      if (!pagarStatus) {
+        throw new AppError("Pagar status lookup is unavailable", 503);
+      }
+      if (
+        pagarStatus.id !== payment.providerTxnId ||
+        pagarStatus.reference !== payment.reference ||
+        pagarStatus.amountMzn * 100 !== payment.amountCents
+      ) {
+        throw new AppError("Pagar payment details do not match the local payment", 502);
+      }
+
+      if (pagarStatus.status === "PAID") {
+        const receipt = {
+          receiptNumber: pagarStatus.receiptNumber,
+          receiptUrl: pagarStatus.receiptUrl,
+        };
+        if (payment.status === PaymentStatus.PENDING) {
+          await completePayment(payment.id, { source: "pagar_status_lookup", ...pagarStatus }, false, receipt);
+        } else if (receipt.receiptNumber || receipt.receiptUrl) {
+          await paymentsRepository.updateReceipt(payment.id, receipt);
+        }
+      } else if (pagarStatus.status === "FAILED") {
+        await paymentsRepository.updatePendingStatus(payment.id, PaymentStatus.FAILED, {
+          source: "pagar_status_lookup",
+          ...pagarStatus,
+        });
+      } else if (pagarStatus.status === "CANCELLED") {
+        await paymentsRepository.updatePendingStatus(payment.id, PaymentStatus.CANCELLED, {
+          source: "pagar_status_lookup",
+          ...pagarStatus,
+        });
+      }
+    }
+
+    const refreshed = await paymentsRepository.findByReference(reference);
+    return {
+      paymentId: payment.id,
+      reference: payment.reference,
+      provider: payment.provider,
+      status: refreshed?.status ?? payment.status,
+      redirectUrl: "",
+      ...(refreshed?.receiptNumber ? { receiptNumber: refreshed.receiptNumber } : {}),
+      ...(refreshed?.receiptUrl ? { receiptUrl: refreshed.receiptUrl } : {}),
+    };
+  },
+
   async listMine(actingUser: AuthenticatedUser): Promise<MyPaymentDto[]> {
     const payments = await paymentsRepository.findManyForUser(actingUser.id);
     return payments.map((payment) => ({
@@ -206,6 +320,12 @@ export const paymentsService = {
         amountCents: item.amountCents,
       })),
       createdAt: payment.createdAt,
+      ...(payment.provider.startsWith("PAGAR_") && payment.status === PaymentStatus.COMPLETED
+        ? {
+            ...(payment.receiptNumber ? { receiptNumber: payment.receiptNumber } : {}),
+            ...(payment.receiptUrl ? { receiptUrl: payment.receiptUrl } : {}),
+          }
+        : {}),
     }));
   },
 };

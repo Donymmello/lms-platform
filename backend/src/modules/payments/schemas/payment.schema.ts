@@ -17,11 +17,17 @@ export const createCheckoutSchema = z.object({
     // The same course twice would charge for it twice and then enrol once.
     .refine((ids) => new Set(ids).size === ids.length, "The same course appears twice"),
   provider: z.nativeEnum(PaymentProvider),
+  payerPhone: z.string().trim().min(1).max(20).optional(),
 });
 
 export const paypalCaptureSchema = z.object({
   reference: z.string().min(1, "Missing payment reference"),
 });
 
+export const pagarReconcileSchema = z.object({
+  reference: z.string().min(1, "Missing payment reference"),
+});
+
 export type CreateCheckoutInput = z.infer<typeof createCheckoutSchema>;
 export type PaypalCaptureInput = z.infer<typeof paypalCaptureSchema>;
+export type PagarReconcileInput = z.infer<typeof pagarReconcileSchema>;

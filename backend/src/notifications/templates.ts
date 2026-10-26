@@ -17,13 +17,13 @@ function layout(heading: string, bodyHtml: string, cta?: { label: string; url: s
 <html lang="pt">
   <body style="margin:0;padding:24px;background:#f5f3f0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1a1713">
     <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;padding:32px">
-      <p style="margin:0 0 24px;font-size:20px;font-weight:700;letter-spacing:-0.01em">LMS</p>
+      <p style="margin:0 0 24px;font-size:20px;font-weight:700;letter-spacing:-0.01em">Protagonista Academy</p>
       <h1 style="margin:0 0 16px;font-size:22px;line-height:1.3">${heading}</h1>
       ${bodyHtml}
       ${button}
     </div>
     <p style="max-width:520px;margin:16px auto 0;font-size:12px;color:#8a8279;text-align:center">
-      Recebeste este email porque tens conta no LMS.
+      Recebeu este email porque tem uma conta na Protagonista Academy.
     </p>
   </body>
 </html>`;
@@ -59,37 +59,37 @@ export interface RenderedEmail {
 export function welcomeEmail(name: string): RenderedEmail {
   const url = `${env.PUBLIC_APP_URL}/courses`;
   return {
-    subject: "Bem-vindo ao LMS",
+    subject: "Bem-vindo à Protagonista Academy",
     html: layout(
       `Olá, ${escapeHtml(name)}`,
       paragraph("A tua conta está criada. Explora o catálogo e inscreve-te no primeiro curso.") +
         paragraph("Os cursos em que te inscreveres ficam disponíveis em «Os meus cursos», com o teu progresso guardado."),
       { label: "Explorar catálogo", url }
     ),
-    text: `Olá, ${name}\n\nA tua conta no LMS está criada. Explora o catálogo em ${url}`,
+    text: `Olá, ${name}\n\nA tua conta na Protagonista Academy está criada. Explora o catálogo em ${url}`,
   };
 }
 
 export function passwordResetEmail(name: string, rawToken: string): RenderedEmail {
   const url = `${env.PUBLIC_APP_URL}/reset-password?token=${encodeURIComponent(rawToken)}`;
   return {
-    subject: "Redefinir a tua palavra-passe",
+    subject: "Pedido para redefinir a palavra-passe",
     html: layout(
       "Redefinir palavra-passe",
       paragraph(
-        `Olá, ${escapeHtml(name)}. Recebemos um pedido para redefinir a palavra-passe da tua conta.`
+        `Olá, ${escapeHtml(name)}. Recebemos um pedido para redefinir a palavra-passe associada à sua conta.`
       ) +
-        paragraph("O link abaixo só funciona uma vez e expira dentro de uma hora.") +
+        paragraph("A ligação abaixo só pode ser utilizada uma vez e expira dentro de uma hora.") +
         paragraph(
-          "Se não foste tu a pedir, ignora este email. A tua palavra-passe actual continua a funcionar."
+          "Se não solicitou esta alteração, ignore este email. A palavra-passe mantém-se inalterada."
         ),
       { label: "Definir nova palavra-passe", url }
     ),
     text: `Olá, ${name}
 
-Para redefinir a palavra-passe: ${url}
+Para redefinir a palavra-passe associada à sua conta, aceda à seguinte ligação: ${url}
 
-O link expira dentro de uma hora e só pode ser usado uma vez. Se não foste tu a pedir, ignora este email.`,
+A ligação expira dentro de uma hora e só pode ser utilizada uma vez. Se não solicitou esta alteração, ignore este email. A palavra-passe mantém-se inalterada.`,
   };
 }
 
@@ -117,7 +117,8 @@ export function paymentReceiptEmail(
   name: string,
   courses: { title: string; slug: string }[],
   amountCents: number,
-  currency: string
+  currency: string,
+  receipt?: { receiptNumber?: string; receiptUrl?: string }
 ): RenderedEmail {
   const amount = (amountCents / 100).toLocaleString("pt-MZ", { style: "currency", currency });
   const isSingle = courses.length === 1;
@@ -135,6 +136,16 @@ export function paymentReceiptEmail(
       `<ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.6">${titles
         .map((title) => `<li>${escapeHtml(title)}</li>`)
         .join("")}</ul>`;
+  const receiptHtml = receipt?.receiptUrl
+    ? paragraph(`<a href="${escapeHtml(receipt.receiptUrl)}">Ver recibo oficial da Pagar</a>`)
+    : receipt?.receiptNumber
+      ? paragraph(`Recibo Pagar: <strong>${escapeHtml(receipt.receiptNumber)}</strong>`)
+      : "";
+  const receiptText = receipt?.receiptUrl
+    ? `\nRecibo oficial da Pagar: ${receipt.receiptUrl}`
+    : receipt?.receiptNumber
+      ? `\nRecibo Pagar: ${receipt.receiptNumber}`
+      : "";
 
   return {
     subject: isSingle
@@ -142,10 +153,12 @@ export function paymentReceiptEmail(
       : `Pagamento confirmado — ${courses.length} cursos`,
     html: layout(
       "Pagamento confirmado",
-      paragraph(`Olá, ${escapeHtml(name)}. Recebemos o teu pagamento de <strong>${amount}</strong>.`) + body,
+      paragraph(`Olá, ${escapeHtml(name)}. Recebemos o teu pagamento de <strong>${amount}</strong>.`) +
+        body +
+        receiptHtml,
       { label: isSingle ? "Ir para o curso" : "Ir para os meus cursos", url }
     ),
-    text: `Olá, ${name}\n\nPagamento de ${amount} confirmado.\n${titles.join("\n")}\n\n${url}`,
+    text: `Olá, ${name}\n\nPagamento de ${amount} confirmado.\n${titles.join("\n")}\n\n${url}${receiptText}`,
   };
 }
 

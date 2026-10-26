@@ -3,7 +3,7 @@ import { authenticate } from "../../middlewares/authenticate";
 import { paymentsRateLimiter } from "../../middlewares/rateLimiter";
 import { validate } from "../../middlewares/validate";
 import { paymentsController } from "./payments.controller";
-import { createCheckoutSchema, paypalCaptureSchema } from "./schemas/payment.schema";
+import { createCheckoutSchema, pagarReconcileSchema, paypalCaptureSchema } from "./schemas/payment.schema";
 
 export const paymentsRouter = Router();
 
@@ -13,6 +13,7 @@ export const paymentsRouter = Router();
 // check, not from a cookie.
 paymentsRouter.post("/webhooks/paysuite", paymentsController.webhookPaysuite);
 paymentsRouter.post("/webhooks/paypal", paymentsController.webhookPaypal);
+paymentsRouter.post("/webhooks/pagar", paymentsController.webhookPagar);
 
 paymentsRouter.use(authenticate);
 
@@ -23,6 +24,12 @@ paymentsRouter.post(
   paymentsController.checkout
 );
 paymentsRouter.get("/me", paymentsController.listMine);
+paymentsRouter.post(
+  "/pagar/reconcile",
+  paymentsRateLimiter,
+  validate(pagarReconcileSchema, "body"),
+  paymentsController.reconcilePagar
+);
 paymentsRouter.post(
   "/paypal/capture",
   validate(paypalCaptureSchema, "body"),

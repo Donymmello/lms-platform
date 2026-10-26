@@ -100,12 +100,18 @@ services:
       PUBLIC_API_URL: ${PUBLIC_ORIGIN}
       PUBLIC_APP_URL: ${PUBLIC_ORIGIN}
       COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      PAGAR_API_BASE_URL: ${PAGAR_API_BASE_URL:-https://api.pagar.co.mz/api/v1}
+      PAGAR_API_KEY: ${PAGAR_API_KEY:-}
+      PAGAR_SIGNING_SECRET: ${PAGAR_SIGNING_SECRET:-}
+      PAGAR_WEBHOOK_SECRET: ${PAGAR_WEBHOOK_SECRET:-}
       SMTP_HOST: ${SMTP_HOST:-lms-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_SECURE: ${SMTP_SECURE:-false}
-      MAIL_FROM: ${MAIL_FROM:-LMS <nao-responder@localhost>}
+      MAIL_FROM: ${MAIL_FROM:-Protagonista Academy <nao-responder@localhost>}
       PAYSUITE_BASE_URL: ${PAYSUITE_BASE_URL:-https://paysuite.tech/api/v1}
       PAYSUITE_API_KEY: ${PAYSUITE_API_KEY:-}
       PAYSUITE_WEBHOOK_SECRET: ${PAYSUITE_WEBHOOK_SECRET:-}

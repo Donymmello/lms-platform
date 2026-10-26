@@ -24,11 +24,8 @@ const GHOST_BUTTON =
   "inline-flex w-full items-center justify-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium transition-colors hover:border-primary/50";
 
 const PROVIDERS: { value: PaymentProvider; label: string }[] = [
-  { value: "MPESA", label: "M-Pesa" },
-  { value: "EMOLA", label: "e-Mola" },
-  // Visa and Mastercard both go through PaySuite's `credit_card` method, so
-  // one button covers them: the card network is picked on their page, not here.
-  { value: "CARD", label: "Cartão" },
+  { value: "PAGAR_MPESA", label: "M-Pesa (Pagar)" },
+  { value: "PAGAR_EMOLA", label: "e-Mola (Pagar)" },
   { value: "PAYPAL", label: "PayPal" },
 ];
 
@@ -36,10 +33,12 @@ export function EnrollButton({ courseId, courseSlug, priceCents }: EnrollButtonP
   const router = useRouter();
   const { user, isLoading } = useAuth();
   const { add, has: isInCart } = useCart();
-  const [provider, setProvider] = useState<PaymentProvider>("MPESA");
+  const [provider, setProvider] = useState<PaymentProvider>("PAGAR_MPESA");
+  const [payerPhone, setPayerPhone] = useState("");
   const [status, setStatus] = useState<"checking" | "idle" | "submitting" | "enrolled">("checking");
   const [error, setError] = useState<string | null>(null);
   const isPaid = priceCents > 0;
+  const pagarAcceptsPrice = priceCents % 100 === 0;
   const inCart = isInCart(courseId);
 
   /**
@@ -96,10 +95,9 @@ export function EnrollButton({ courseId, courseSlug, priceCents }: EnrollButtonP
     setError(null);
     setStatus("submitting");
     try {
-      const checkout = await paymentsService.checkout([courseId], provider);
-      // Full browser navigation — the destination is the gateway's own
-      // hosted checkout page (PaySuite) or approval page (PayPal), not a
-      // route inside this app.
+      const checkout = await paymentsService.checkout([courseId], provider, payerPhone);
+      // PayPal uses hosted checkout; Pagar prompts the buyer's phone
+      // and returns to this app while the webhook confirms the payment.
       window.location.href = checkout.redirectUrl;
     } catch (err) {
       setStatus("idle");
@@ -200,8 +198,9 @@ export function EnrollButton({ courseId, courseSlug, priceCents }: EnrollButtonP
               key={option.value}
               type="button"
               onClick={() => setProvider(option.value)}
+              disabled={!pagarAcceptsPrice && option.value.startsWith("PAGAR_")}
               aria-pressed={provider === option.value}
-              className={`rounded-lg border px-2 py-2.5 text-xs font-medium transition-colors ${
+              className={`rounded-lg border px-2 py-2.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                 provider === option.value
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border text-muted-foreground hover:border-muted-foreground hover:text-foreground"
@@ -211,6 +210,25 @@ export function EnrollButton({ courseId, courseSlug, priceCents }: EnrollButtonP
             </button>
           ))}
         </div>
+        {!pagarAcceptsPrice && (
+          <p className="text-xs text-muted-foreground">
+            A Pagar só aceita valores inteiros em MZN. Usa outro método para este preço.
+          </p>
+        )}
+        {(provider === "PAGAR_MPESA" || provider === "PAGAR_EMOLA") && (
+          <label className="block space-y-1 text-xs">
+            <span>Número para receber o pedido de pagamento</span>
+            <input
+              type="tel"
+              autoComplete="tel"
+              value={payerPhone}
+              onChange={(event) => setPayerPhone(event.target.value)}
+              required
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              placeholder={provider === "PAGAR_EMOLA" ? "86XXXXXXX" : "84XXXXXXX"}
+            />
+          </label>
+        )}
       </div>
 
       <button

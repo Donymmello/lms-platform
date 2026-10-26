@@ -16,6 +16,7 @@ const gateway = vi.hoisted(() => ({
   initiateCheckout: vi.fn(),
   verifyWebhook: vi.fn(),
   captureOrder: vi.fn(),
+  getPaymentByReference: vi.fn(),
 }));
 
 vi.mock("./providers", () => ({
@@ -31,6 +32,7 @@ beforeEach(() => {
     redirectUrl: "https://gateway.test/checkout/abc",
     providerTxnId: "txn-abc",
   });
+  gateway.getPaymentByReference.mockReset();
 });
 
 async function pricedCourse(priceCents = 50_000) {
@@ -163,6 +165,123 @@ describe("POST /payments/checkout", () => {
 
     expect(anonymous.status).toBe(401);
     expect(badProvider.status).toBe(400);
+  });
+
+  it("starts a Pagar checkout with the selected phone number", async () => {
+    const course = await pricedCourse(50_000);
+    const buyer = await createUser();
+
+    const response = await request(app)
+      .post("/api/v1/payments/checkout")
+      .set("Cookie", authCookie(buyer))
+      .send({
+        courseIds: [course.id],
+        provider: PaymentProvider.PAGAR_MPESA,
+        payerPhone: "840000001",
+      });
+
+    expect(response.status).toBe(201);
+    expect(gateway.initiateCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({ amountCents: 50_000, payerPhone: "840000001" })
+    );
+    const payment = await prisma.payment.findFirstOrThrow({ where: { userId: buyer.id } });
+    expect(payment).toMatchObject({
+      provider: PaymentProvider.PAGAR_MPESA,
+      payerPhone: "840000001",
+    });
+  });
+
+  it("requires a payer phone for Pagar", async () => {
+    const course = await pricedCourse();
+    const buyer = await createUser();
+
+    const response = await request(app)
+      .post("/api/v1/payments/checkout")
+      .set("Cookie", authCookie(buyer))
+      .send({ courseIds: [course.id], provider: PaymentProvider.PAGAR_EMOLA });
+
+    expect(response.status).toBe(400);
+    expect(gateway.initiateCheckout).not.toHaveBeenCalled();
+  });
+
+  it("refuses Pagar checkout when the total contains cents without changing the price", async () => {
+    const course = await pricedCourse(199_999);
+    const buyer = await createUser();
+
+    const response = await request(app)
+      .post("/api/v1/payments/checkout")
+      .set("Cookie", authCookie(buyer))
+      .send({
+        courseIds: [course.id],
+        provider: PaymentProvider.PAGAR_MPESA,
+        payerPhone: "840000001",
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toContain("valores inteiros em MZN");
+    expect(gateway.initiateCheckout).not.toHaveBeenCalled();
+    expect(await prisma.payment.count({ where: { userId: buyer.id } })).toBe(0);
+  });
+
+  it("reconciles a confirmed Pagar payment and enrolls the buyer", async () => {
+    const course = await pricedCourse(300_000);
+    const buyer = await createUser();
+    const payment = await createPayment(buyer.id, course.id, {
+      provider: PaymentProvider.PAGAR_EMOLA,
+      providerTxnId: "pay_123",
+      status: PaymentStatus.PENDING,
+      amountCents: 300_000,
+    });
+    gateway.getPaymentByReference.mockResolvedValue({
+      id: "pay_123",
+      reference: payment.reference,
+      amountMzn: 3000,
+      status: "PAID",
+      receiptNumber: "REC-123",
+      receiptUrl: "https://pagar.co.mz/receipts/REC-123",
+    });
+
+    const response = await request(app)
+      .post("/api/v1/payments/pagar/reconcile")
+      .set("Cookie", authCookie(buyer))
+      .send({ reference: payment.reference });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.checkout.status).toBe(PaymentStatus.COMPLETED);
+    expect(response.body.data.checkout).toMatchObject({
+      receiptNumber: "REC-123",
+      receiptUrl: "https://pagar.co.mz/receipts/REC-123",
+    });
+    expect(await prisma.enrollment.count({ where: { userId: buyer.id, courseId: course.id } })).toBe(1);
+    expect(await prisma.payment.findUniqueOrThrow({ where: { id: payment.id } })).toMatchObject({
+      receiptNumber: "REC-123",
+      receiptUrl: "https://pagar.co.mz/receipts/REC-123",
+    });
+  });
+
+  it("does not enroll when the Pagar lookup does not match the local charge", async () => {
+    const course = await pricedCourse(300_000);
+    const buyer = await createUser();
+    const payment = await createPayment(buyer.id, course.id, {
+      provider: PaymentProvider.PAGAR_EMOLA,
+      providerTxnId: "pay_123",
+      status: PaymentStatus.PENDING,
+      amountCents: 300_000,
+    });
+    gateway.getPaymentByReference.mockResolvedValue({
+      id: "pay_123",
+      reference: payment.reference,
+      amountMzn: 2000,
+      status: "PAID",
+    });
+
+    const response = await request(app)
+      .post("/api/v1/payments/pagar/reconcile")
+      .set("Cookie", authCookie(buyer))
+      .send({ reference: payment.reference });
+
+    expect(response.status).toBe(502);
+    expect(await prisma.enrollment.count({ where: { userId: buyer.id, courseId: course.id } })).toBe(0);
   });
 });
 

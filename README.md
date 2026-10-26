@@ -1,6 +1,6 @@
-# lms-platform
+# Protagonista Academy
 
-LMS com vídeo protegido (Bunny Stream), pagamentos moçambicanos (M-Pesa e e-Mola via PaySuite) e PayPal.
+Plataforma de aprendizagem com vídeo protegido (Bunny Stream), pagamentos moçambicanos e PayPal.
 
 **Stack:** Node.js · Express · TypeScript · Prisma · PostgreSQL · Next.js (App Router) · Tailwind · Docker
 
@@ -17,6 +17,35 @@ docker compose up -d
 | Adminer | http://localhost:8080 |
 
 As dependências vivem dentro dos containers (o compose usa volumes anónimos para `/app/node_modules`), por isso **não** é preciso `npm install` na máquina host.
+
+### Login com Google
+
+No Google Cloud Console:
+
+1. Cria ou selecciona um projecto e configura o ecrã de consentimento (nome da aplicação e emails de suporte/contacto).
+2. Se a aplicação estiver em modo **Testing**, adiciona a conta Google usada para testar à lista de utilizadores de teste.
+3. Em **Data Access**, mantém apenas os scopes `openid`, `email` e `profile`.
+4. Cria um OAuth Client ID do tipo **Web application** e adiciona o URI abaixo em **Authorized redirect URIs**:
+
+```text
+http://localhost:5000/api/v1/auth/google/callback
+```
+
+Coloca o Client ID e o Client Secret no `.env` da raiz (não os publiques nem os envies no chat):
+
+```dotenv
+GOOGLE_CLIENT_ID=...apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=...
+```
+
+Aplica as migrations e recria o backend:
+
+```bash
+docker compose exec lms-backend npx prisma migrate deploy
+docker compose up -d --force-recreate lms-backend
+```
+
+Se usares um túnel ou domínio, define `PUBLIC_API_URL` como a origem pública da API, **sem** acrescentar `/api/v1` (por exemplo `https://teu-dominio.example`), e regista `${PUBLIC_API_URL}/api/v1/auth/google/callback` como redirect URI autorizado no Google. O URI tem de coincidir exactamente, incluindo `http`/`https`, host, porta e caminho. Depois de configurado, `/api/v1/auth/google` deve redireccionar para `accounts.google.com`; `google_error=not_configured` significa que as variáveis não chegaram ao backend. Contas com verificação em dois passos continuam a entrar com email e palavra-passe para concluir o segundo factor.
 
 ### Recarregamento automático
 
@@ -289,7 +318,7 @@ SMTP_PORT=587
 SMTP_USER=...
 SMTP_PASSWORD=...
 SMTP_SECURE=false        # true só na porta 465
-MAIL_FROM=Estúdio <nao-responder@oteudominio.com>
+MAIL_FROM=Protagonista Academy <nao-responder@oteudominio.com>
 ```
 
 Com `SMTP_HOST` vazio o envio fica desligado e a aplicação corre à mesma, que é como os testes e um checkout novo funcionam.

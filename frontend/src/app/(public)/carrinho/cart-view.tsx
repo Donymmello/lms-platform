@@ -23,11 +23,8 @@ import { PaymentProvider } from "@/types/payment";
  */
 
 const PROVIDERS: { value: PaymentProvider; label: string }[] = [
-  { value: "MPESA", label: "M-Pesa" },
-  { value: "EMOLA", label: "e-Mola" },
-  // Visa and Mastercard both go through PaySuite's `credit_card` method, so
-  // one button covers them: the card network is picked on their page, not here.
-  { value: "CARD", label: "Cartão" },
+  { value: "PAGAR_MPESA", label: "M-Pesa (Pagar)" },
+  { value: "PAGAR_EMOLA", label: "e-Mola (Pagar)" },
   { value: "PAYPAL", label: "PayPal" },
 ];
 
@@ -41,7 +38,8 @@ export function CartView() {
   const { entries, isHydrated, remove, clear } = useCart();
 
   const [courses, setCourses] = useState<CourseDetail[] | null>(null);
-  const [provider, setProvider] = useState<PaymentProvider>("MPESA");
+  const [provider, setProvider] = useState<PaymentProvider>("PAGAR_MPESA");
+  const [payerPhone, setPayerPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,6 +69,12 @@ export function CartView() {
 
   async function handleCheckout() {
     if (!courses || courses.length === 0) return;
+    const total = courses.reduce((sum, course) => sum + course.priceCents, 0);
+    const pagarAcceptsPrice = total % 100 === 0;
+    if (!pagarAcceptsPrice && provider.startsWith("PAGAR_")) {
+      setError("A Pagar só aceita valores inteiros em MZN. Selecciona outro método de pagamento.");
+      return;
+    }
 
     if (!user) {
       router.push("/login?from=/carrinho");
@@ -82,7 +86,8 @@ export function CartView() {
     try {
       const checkout = await paymentsService.checkout(
         courses.map((course) => course.id),
-        provider
+        provider,
+        payerPhone
       );
       // The cart is cleared on the way out rather than on return: the buyer is
       // leaving for the gateway, and coming back to a full cart after paying
@@ -124,6 +129,7 @@ export function CartView() {
   }
 
   const total = courses.reduce((sum, course) => sum + course.priceCents, 0);
+  const pagarAcceptsPrice = total % 100 === 0;
   const hasFree = courses.some((course) => course.priceCents === 0);
 
   return (
@@ -193,8 +199,9 @@ export function CartView() {
                   key={option.value}
                   type="button"
                   onClick={() => setProvider(option.value)}
+                  disabled={!pagarAcceptsPrice && option.value.startsWith("PAGAR_")}
                   aria-pressed={provider === option.value}
-                  className={`focus-ring min-h-11 rounded-lg border px-2 text-xs font-medium transition-colors ${
+                  className={`focus-ring min-h-11 rounded-lg border px-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                     provider === option.value
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border text-muted-foreground hover:border-muted-foreground hover:text-foreground"
@@ -204,7 +211,26 @@ export function CartView() {
                 </button>
               ))}
             </div>
+            {!pagarAcceptsPrice && (
+              <p className="text-xs text-muted-foreground">
+                A Pagar só aceita valores inteiros em MZN. Usa outro método para este total.
+              </p>
+            )}
           </div>
+          {(provider === "PAGAR_MPESA" || provider === "PAGAR_EMOLA") && (
+            <label className="block space-y-1 text-xs">
+              <span>Número para receber o pedido de pagamento</span>
+              <input
+                type="tel"
+                autoComplete="tel"
+                value={payerPhone}
+                onChange={(event) => setPayerPhone(event.target.value)}
+                required
+                className="focus-ring min-h-11 w-full rounded-lg border border-border bg-background px-3 text-sm"
+                placeholder={provider === "PAGAR_EMOLA" ? "86XXXXXXX" : "84XXXXXXX"}
+              />
+            </label>
+          )}
 
           {/*
             One charge for the whole cart, which is the point: each M-Pesa

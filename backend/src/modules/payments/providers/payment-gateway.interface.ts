@@ -7,6 +7,7 @@ export interface InitiateCheckoutParams {
   description: string;
   returnUrl: string;
   cancelUrl: string;
+  payerPhone?: string;
 }
 
 export interface InitiateCheckoutResult {
@@ -16,9 +17,26 @@ export interface InitiateCheckoutResult {
   providerTxnId: string;
 }
 
+export interface PagarPaymentStatus {
+  id: string;
+  reference: string;
+  amountMzn: number;
+  status: "PENDING" | "PROCESSING" | "PAID" | "FAILED" | "CANCELLED" | "RECONCILIATION_REQUIRED" | "REFUNDED";
+  receiptNumber?: string;
+  receiptUrl?: string;
+}
+
 export type WebhookOutcome =
-  | { kind: "completed"; providerTxnId: string }
-  | { kind: "failed"; providerTxnId: string }
+  | {
+      kind: "completed";
+      providerTxnId: string;
+      reference?: string;
+      amountCents?: number;
+      eventId?: string;
+      receiptNumber?: string;
+      receiptUrl?: string;
+    }
+  | { kind: "failed"; providerTxnId: string; reference?: string; amountCents?: number; eventId?: string }
   /** An event this gateway sends that isn't relevant to course checkout (e.g. a payout event). */
   | { kind: "ignored" };
 
@@ -29,6 +47,7 @@ export type WebhookOutcome =
  */
 export interface PaymentGateway {
   initiateCheckout(params: InitiateCheckoutParams): Promise<InitiateCheckoutResult>;
+  getPaymentByReference?(reference: string): Promise<PagarPaymentStatus>;
   /**
    * Verifies the webhook call really came from the gateway (signature /
    * API-backed check) and returns a normalized outcome. Must throw

@@ -5,7 +5,7 @@ import { AppError } from "../../errors";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { paymentsService } from "./payments.service";
 import { getPaymentGateway } from "./providers";
-import { CreateCheckoutInput, PaypalCaptureInput } from "./schemas/payment.schema";
+import { CreateCheckoutInput, PagarReconcileInput, PaypalCaptureInput } from "./schemas/payment.schema";
 
 /**
  * Webhook signature verification is computed over the exact raw request
@@ -36,6 +36,11 @@ export const paymentsController = {
     res.status(200).json({ status: "success", data: { checkout } });
   }),
 
+  reconcilePagar: asyncHandler(async (req: Request<unknown, unknown, PagarReconcileInput>, res: Response) => {
+    const checkout = await paymentsService.reconcilePagarPayment(req.body.reference, req.user!);
+    res.status(200).json({ status: "success", data: { checkout } });
+  }),
+
   // Both mobile-money rails (M-Pesa, e-Mola) share one PaySuite account and
   // one webhook signature secret — the `method` used at checkout time
   // doesn't change how the callback is verified, so either gateway instance
@@ -53,6 +58,16 @@ export const paymentsController = {
   webhookPaypal: asyncHandler(async (req: Request, res: Response) => {
     const rawBody = requireRawBody(req);
     const outcome = await getPaymentGateway(PaymentProvider.PAYPAL).verifyWebhook(
+      rawBody,
+      req.headers as IncomingHttpHeaders
+    );
+    await paymentsService.handleWebhook(outcome, req.body);
+    res.status(200).json({ status: "success" });
+  }),
+
+  webhookPagar: asyncHandler(async (req: Request, res: Response) => {
+    const rawBody = requireRawBody(req);
+    const outcome = await getPaymentGateway(PaymentProvider.PAGAR_MPESA).verifyWebhook(
       rawBody,
       req.headers as IncomingHttpHeaders
     );

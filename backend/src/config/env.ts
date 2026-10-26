@@ -35,6 +35,15 @@ const envSchema = z.object({
   PAYSUITE_API_KEY: z.string().default(""),
   PAYSUITE_WEBHOOK_SECRET: z.string().default(""),
 
+  // --- Pagar.co.mz (M-Pesa + e-Mola API) ---
+  PAGAR_API_BASE_URL: z.string().url().default("https://api.pagar.co.mz/api/v1"),
+  PAGAR_API_KEY: z.string().default(""),
+  PAGAR_SIGNING_SECRET: z
+    .string()
+    .default("")
+    .transform((secret) => secret || process.env.PAGAR_SIGNING || ""),
+  PAGAR_WEBHOOK_SECRET: z.string().default(""),
+
   // --- PayPal (Orders v2 REST API) ---
   PAYPAL_BASE_URL: z.string().url().default("https://api-m.sandbox.paypal.com"),
   PAYPAL_CLIENT_ID: z.string().default(""),

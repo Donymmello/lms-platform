@@ -10,13 +10,7 @@ import { ApiError } from "@/services/api-client";
 import { paymentsService } from "@/services/payments.service";
 import { CheckoutResult } from "@/types/payment";
 
-/**
- * Landing page after the buyer approves on PayPal's hosted page. Unlike
- * PaySuite, PayPal requires an explicit server-side "capture" call to
- * actually move the money — this page triggers that call once, then shows
- * the result. The async webhook (payments.controller.ts) is a backstop for
- * the (rare) case the buyer's browser never makes it back here.
- */
+/** Captures the approved PayPal order and shows its result; the webhook is a backstop. */
 function PaypalReturnContent() {
   const searchParams = useSearchParams();
   const reference = searchParams.get("reference");

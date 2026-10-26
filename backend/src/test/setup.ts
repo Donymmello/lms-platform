@@ -33,6 +33,7 @@ const TABLES = [
   "live_sessions",
   "enrollments",
   "payments",
+  "payment_webhook_events",
   "lessons",
   "course_modules",
   "courses",

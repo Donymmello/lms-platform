@@ -70,12 +70,12 @@ export const notifications = {
   paymentCompleted(
     user: { name: string; email: string },
     courses: { title: string; slug: string }[],
-    payment: { amountCents: number; currency: string }
+    payment: { amountCents: number; currency: string; receiptNumber?: string; receiptUrl?: string }
   ): void {
     dispatch(
       mailer.send({
         to: user.email,
-        ...paymentReceiptEmail(user.name, courses, payment.amountCents, payment.currency),
+        ...paymentReceiptEmail(user.name, courses, payment.amountCents, payment.currency, payment),
       })
     );
   },

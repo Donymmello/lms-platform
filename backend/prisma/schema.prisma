@@ -416,6 +416,8 @@ enum PaymentProvider {
   /// method `credit_card`; there is no separate value per card network.
   CARD
   PAYPAL
+  PAGAR_MPESA
+  PAGAR_EMOLA
 }
 
 enum PaymentStatus {
@@ -443,6 +445,7 @@ model Payment {
   user          User            @relation(fields: [userId], references: [id], onDelete: Restrict)
   provider      PaymentProvider
   status        PaymentStatus   @default(PENDING)
+  payerPhone    String?
   /// The total actually sent to the gateway — the sum of the items below, kept
   /// as its own column because it is what the gateway was told and must not
   /// change if a course is repriced afterwards.
@@ -450,6 +453,8 @@ model Payment {
   currency      String          @default("MZN")
   reference     String          @unique
   providerTxnId String?
+  receiptNumber String?
+  receiptUrl    String?
   rawPayload    Json?
   items         PaymentItem[]
   enrollments   Enrollment[]
@@ -476,4 +481,13 @@ model PaymentItem {
   @@unique([paymentId, courseId])
   @@index([courseId])
   @@map("payment_items")
+}
+
+model PaymentWebhookEvent {
+  id        String   @id @default(uuid())
+  eventId   String   @unique
+  eventType String
+  createdAt DateTime @default(now())
+
+  @@map("payment_webhook_events")
 }
